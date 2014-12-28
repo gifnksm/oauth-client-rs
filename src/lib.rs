@@ -34,10 +34,10 @@ impl<'a> Token<'a> {
 
 pub type ParamList<'a> = HashMap<CowString<'a>, CowString<'a>>;
 
-fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V)
+fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option<CowString<'a>>
     where K : IntoCow<'a, String, str>, V: IntoCow<'a, String, str>
 {
-    param.insert(key.into_cow(), value.into_cow());
+    param.insert(key.into_cow(), value.into_cow())
 }
 
 fn join_query<'a>(param: &ParamList<'a>) -> String {
@@ -55,7 +55,7 @@ fn split_query<'a>(query: &'a str) -> ParamList<'a> {
         let mut s = q.splitn(2, '=');
         let k = s.next().unwrap();
         let v = s.next().unwrap();
-        insert_param(&mut param, k, v);
+        let _ = insert_param(&mut param, k, v);
     }
     param
 }
@@ -109,18 +109,18 @@ fn get_header(method: &str, uri: &str, consumer: &Token, token: Option<&Token>, 
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
     let nonce = OsRng::new().unwrap().gen_ascii_chars().take(32).collect::<String>();
 
-    insert_param(&mut param, "oauth_consumer_key",     consumer.key.as_slice());
-    insert_param(&mut param, "oauth_nonce",            nonce);
-    insert_param(&mut param, "oauth_signature_method", "HMAC-SHA1");
-    insert_param(&mut param, "oauth_timestamp",        timestamp);
-    insert_param(&mut param, "oauth_version",          "1.0");
+    let _ = insert_param(&mut param, "oauth_consumer_key",     consumer.key.as_slice());
+    let _ = insert_param(&mut param, "oauth_nonce",            nonce);
+    let _ = insert_param(&mut param, "oauth_signature_method", "HMAC-SHA1");
+    let _ = insert_param(&mut param, "oauth_timestamp",        timestamp);
+    let _ = insert_param(&mut param, "oauth_version",          "1.0");
     if let Some(tk) = token {
-        insert_param(&mut param, "oauth_token", tk.key.as_slice());
+        let _ = insert_param(&mut param, "oauth_token", tk.key.as_slice());
     }
 
     if let Some(ps) = other_param {
         for (k, v) in ps.iter() {
-            insert_param(&mut param, k.as_slice(), v.as_slice());
+            let _ = insert_param(&mut param, k.as_slice(), v.as_slice());
         }
     }
 
@@ -128,7 +128,7 @@ fn get_header(method: &str, uri: &str, consumer: &Token, token: Option<&Token>, 
                          join_query(&param).as_slice(),
                          consumer.secret.as_slice(),
                          token.map(|t| t.secret.as_slice()));
-    insert_param(&mut param, "oauth_signature", sign);
+    let _ = insert_param(&mut param, "oauth_signature", sign);
 
     (header(&param), body(&param))
 }
@@ -164,8 +164,8 @@ mod tests {
     #[test]
     fn query() {
         let mut map = HashMap::new();
-        map.insert("aaa".into_cow(), "AAA".into_cow());
-        map.insert("bbbb".into_cow(), "BBBB".into_cow());
+        let _ = map.insert("aaa".into_cow(), "AAA".into_cow());
+        let _ = map.insert("bbbb".into_cow(), "BBBB".into_cow());
         let query = super::join_query(&map);
         assert_eq!("aaa=AAA&bbbb=BBBB", query);
     }
