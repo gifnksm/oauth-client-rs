@@ -8,3 +8,10 @@ readme = "README.md"
 repository = "https://github.com/gifnksm/oauth-client-rs"
 description = "OAuth client for Rust"
 
+[dependencies]
+time = "*"
+url = "*"
+curl = "*"
+log = "*"
+rustc-serialize = "*"
+rust-crypto = "*"
