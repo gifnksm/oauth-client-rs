@@ -12,7 +12,7 @@ extern crate time;
 extern crate url;
 
 use std::collections::HashMap;
-use std::rand::{Rng, OsRng};
+use std::rand::{mod, Rng};
 use std::str::{mod, CowString};
 use rustc_serialize::base64::{mod, ToBase64};
 use crypto::hmac::Hmac;
@@ -107,7 +107,7 @@ fn body(param: &ParamList) -> String{
 fn get_header(method: &str, uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
-    let nonce = OsRng::new().unwrap().gen_ascii_chars().take(32).collect::<String>();
+    let nonce = rand::thread_rng().gen_ascii_chars().take(32).collect::<String>();
 
     let _ = insert_param(&mut param, "oauth_consumer_key",     consumer.key.as_slice());
     let _ = insert_param(&mut param, "oauth_nonce",            nonce);

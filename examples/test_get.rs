@@ -8,7 +8,7 @@ extern crate "oauth-client" as oauth;
 
 use std::collections::HashMap;
 use std::str::CowString;
-use std::rand::{Rng, OsRng};
+use std::rand::{mod, Rng};
 use oauth::Token;
 
 mod api {
@@ -45,7 +45,7 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
 }
 
 fn echo(consumer: &Token, access: &Token) {
-    let mut rng = OsRng::new().unwrap();
+    let mut rng = rand::thread_rng();
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into_cow(), "testFOO".into_cow());
     let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect::<String>().into_cow(),
