@@ -19,6 +19,7 @@ use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
 use curl::http;
+use curl::http::handle::Method;
 use url::percent_encoding;
 
 #[deriving(Clone, Show)]
@@ -104,7 +105,7 @@ fn body(param: &ParamList) -> String{
     format!("{}", pairs.connect("&"))
 }
 
-fn get_header(method: &str, uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> (String, String) {
+fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
     let nonce = rand::thread_rng().gen_ascii_chars().take(32).collect::<String>();
@@ -124,7 +125,18 @@ fn get_header(method: &str, uri: &str, consumer: &Token, token: Option<&Token>, 
         }
     }
 
-    let sign = signature(method, uri,
+    let method_str = match method {
+        Method::Options => "OPTIONS",
+        Method::Get => "GET",
+        Method::Head => "HEAD",
+        Method::Post => "POST",
+        Method::Put => "PUT",
+        Method::Delete => "DELETE",
+        Method::Trace => "TRACE",
+        Method::Connect => "CONNECT"
+    };
+
+    let sign = signature(method_str, uri,
                          join_query(&param).as_slice(),
                          consumer.secret.as_slice(),
                          token.map(|t| t.secret.as_slice()));
@@ -133,8 +145,12 @@ fn get_header(method: &str, uri: &str, consumer: &Token, token: Option<&Token>, 
     (header(&param), body(&param))
 }
 
+pub fn authorization_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> String {
+    get_header(method, uri, consumer, token, other_param).0
+}
+
 pub fn get(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> String {
-    let (header, body) = get_header("GET", uri, consumer, token, other_param);
+    let (header, body) = get_header(Method::Get, uri, consumer, token, other_param);
     let resp = http::handle()
         .get(if body.len() > 0 { format!("{}?{}", uri, body) } else { format!("{}", uri) })
         .header("Authorization", header.as_slice())
@@ -145,7 +161,7 @@ pub fn get(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Opti
 }
 
 pub fn post(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> String {
-    let (header, body) = get_header("POST", uri, consumer, token, other_param);
+    let (header, body) = get_header(Method::Post, uri, consumer, token, other_param);
     let resp = http::handle()
         .post(uri, body.as_slice())
         .header("Authorization", header.as_slice())
