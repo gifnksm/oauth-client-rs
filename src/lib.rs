@@ -11,6 +11,7 @@ extern crate "rustc-serialize" as rustc_serialize;
 extern crate time;
 extern crate url;
 
+use std::borrow::IntoCow;
 use std::collections::HashMap;
 use std::rand::{mod, Rng};
 use std::str::{mod, CowString};
@@ -175,6 +176,7 @@ pub fn post(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Opt
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::IntoCow;
     use std::collections::HashMap;
 
     #[test]

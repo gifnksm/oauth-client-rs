@@ -7,6 +7,7 @@
 extern crate curl;
 extern crate "oauth-client" as oauth;
 
+use std::borrow::IntoCow;
 use std::collections::HashMap;
 use std::str::{mod, CowString};
 use std::rand::{mod, Rng};
