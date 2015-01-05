@@ -9,8 +9,8 @@ extern crate "oauth-client" as oauth;
 
 use std::borrow::IntoCow;
 use std::collections::HashMap;
-use std::str::{mod, CowString};
-use std::rand::{mod, Rng};
+use std::str::{self, CowString};
+use std::rand::{self, Rng};
 use curl::http;
 use curl::http::handle::Method;
 use oauth::Token;

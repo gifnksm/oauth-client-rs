@@ -13,9 +13,9 @@ extern crate url;
 
 use std::borrow::IntoCow;
 use std::collections::HashMap;
-use std::rand::{mod, Rng};
-use std::str::{mod, CowString};
-use rustc_serialize::base64::{mod, ToBase64};
+use std::rand::{self, Rng};
+use std::str::{self, CowString};
+use rustc_serialize::base64::{self, ToBase64};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
@@ -23,7 +23,7 @@ use curl::http;
 use curl::http::handle::Method;
 use url::percent_encoding;
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct Token<'a> { pub key: CowString<'a>, pub secret: CowString<'a> }
 
 impl<'a> Token<'a> {
@@ -49,17 +49,6 @@ fn join_query<'a>(param: &ParamList<'a>) -> String {
         .collect::<Vec<_>>();
     pairs.sort();
     pairs.connect("&")
-}
-
-fn split_query<'a>(query: &'a str) -> ParamList<'a> {
-    let mut param = HashMap::new();
-    for q in query.split('&') {
-        let mut s = q.splitn(2, '=');
-        let k = s.next().unwrap();
-        let v = s.next().unwrap();
-        let _ = insert_param(&mut param, k, v);
-    }
-    param
 }
 
 fn encode(s: &str) -> String {
