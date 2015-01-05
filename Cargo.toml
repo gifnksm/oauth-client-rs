@@ -1,7 +1,7 @@
 [package]
 
 name = "oauth-client"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["gifnksm <makoto.nksm+github@gmail.com>"]
 license = "MIT"
 readme = "README.md"
