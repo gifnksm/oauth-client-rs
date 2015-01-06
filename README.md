@@ -2,7 +2,7 @@
 
 OAuth client for Rust
 
-[Documentation](http://gifnksm.github.io/oauth-client-rs)
+[Documentation](https://gifnksm.github.io/oauth-client-rs)
 
 ## How to use?
 
