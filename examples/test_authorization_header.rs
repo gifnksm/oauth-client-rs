@@ -2,8 +2,6 @@
         unused, unused_extern_crates, unused_import_braces,
         unused_qualifications, unused_results, unused_typecasts)]
 
-#![feature(phase)]
-
 extern crate curl;
 extern crate "oauth-client" as oauth;
 
@@ -43,7 +41,7 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
     let resp = str::from_utf8(resp.get_body())
         .unwrap()
         .to_string();
-    println!("get_request_token response: {}", resp);
+    println!("get_request_token response: {:?}", resp);
     let param = split_query(resp.as_slice());
     Token::new(param.get("oauth_token").unwrap().to_string(),
                param.get("oauth_token_secret").unwrap().to_string())
@@ -59,7 +57,7 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
     let resp = str::from_utf8(resp.get_body())
         .unwrap()
         .to_string();
-    println!("get_access_token response: {}", resp);
+    println!("get_access_token response: {:?}", resp);
     let param = split_query(resp.as_slice());
     Token::new(param.get("oauth_token").unwrap().to_string(),
                param.get("oauth_token_secret").unwrap().to_string())
@@ -76,20 +74,20 @@ fn echo(consumer: &Token, access: &Token) {
         .exec()
         .unwrap();
     let resp = str::from_utf8(resp.get_body()).unwrap();
-    println!("echo response: {}", resp);
+    println!("echo response: {:?}", resp);
     let resp_body = resp.as_slice();
     assert_eq!("", resp_body);
 }
 
 fn main() {
     let consumer = Token::new("key", "secret");
-    println!("consumer: {}", consumer);
+    println!("consumer: {:?}", consumer);
 
     let request = get_request_token(&consumer);
-    println!("request: {}", request);
+    println!("request: {:?}", request);
 
     let access = get_access_token(&consumer, &request);
-    println!("access: {}", access);
+    println!("access: {:?}", access);
 
     echo(&consumer, &access);
 

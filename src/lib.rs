@@ -2,11 +2,9 @@
         unused, unused_extern_crates, unused_import_braces,
         unused_qualifications, unused_results, unused_typecasts)]
 
-#![feature(phase)]
-
 extern crate crypto;
 extern crate curl;
-#[phase(plugin, link)] extern crate log;
+#[macro_use] extern crate log;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate time;
 extern crate url;
