@@ -2,18 +2,21 @@
         unused, unused_extern_crates, unused_import_braces,
         unused_qualifications, unused_results, unused_typecasts)]
 
+#![feature(core)]
+
 extern crate crypto;
 extern crate curl;
 #[macro_use] extern crate log;
+extern crate rand;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate time;
 extern crate url;
 
 use std::borrow::IntoCow;
 use std::collections::HashMap;
-use std::rand::{self, Rng};
 use std::str;
 use std::string::CowString;
+use rand::Rng;
 use rustc_serialize::base64::{self, ToBase64};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
@@ -22,7 +25,7 @@ use curl::http;
 use curl::http::handle::Method;
 use url::percent_encoding;
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Token<'a> { pub key: CowString<'a>, pub secret: CowString<'a> }
 
 impl<'a> Token<'a> {
