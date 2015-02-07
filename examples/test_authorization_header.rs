@@ -2,17 +2,20 @@
         unused, unused_extern_crates, unused_import_braces,
         unused_qualifications, unused_results, unused_typecasts)]
 
+#![feature(core)]
+
 extern crate curl;
 extern crate "oauth-client" as oauth;
+extern crate rand;
 
 use std::borrow::IntoCow;
 use std::collections::HashMap;
 use std::str;
 use std::string::CowString;
-use std::rand::{self, Rng};
 use curl::http;
 use curl::http::handle::Method;
 use oauth::Token;
+use rand::Rng;
 
 mod api {
     pub const REQUEST_TOKEN: &'static str = "http://term.ie/oauth/example/request_token.php";
