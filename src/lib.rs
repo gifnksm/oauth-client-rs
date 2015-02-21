@@ -12,10 +12,9 @@ extern crate "rustc-serialize" as rustc_serialize;
 extern crate time;
 extern crate url;
 
-use std::borrow::IntoCow;
+use std::borrow::{Cow, IntoCow};
 use std::collections::HashMap;
 use std::str;
-use std::string::CowString;
 use rand::Rng;
 use rustc_serialize::base64::{self, ToBase64};
 use crypto::hmac::Hmac;
@@ -26,20 +25,21 @@ use curl::http::handle::Method;
 use url::percent_encoding;
 
 #[derive(Clone, Debug)]
-pub struct Token<'a> { pub key: CowString<'a>, pub secret: CowString<'a> }
+pub struct Token<'a> { pub key: Cow<'a, str>, pub secret: Cow<'a, str> }
 
 impl<'a> Token<'a> {
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
-        where K : IntoCow<'a, String, str>, S: IntoCow<'a, String, str>
+        where K : IntoCow<'a, str>, S: IntoCow<'a, str>
     {
         Token { key: key.into_cow(), secret: secret.into_cow() }
     }
 }
 
-pub type ParamList<'a> = HashMap<CowString<'a>, CowString<'a>>;
+pub type ParamList<'a> = HashMap<Cow<'a, str>, Cow<'a, str>>;
 
-fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option<CowString<'a>>
-    where K : IntoCow<'a, String, str>, V: IntoCow<'a, String, str>
+fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V)
+                          -> Option<Cow<'a, str>>
+    where K : IntoCow<'a, str>, V: IntoCow<'a, str>
 {
     param.insert(key.into_cow(), value.into_cow())
 }
