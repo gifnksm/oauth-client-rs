@@ -8,10 +8,9 @@ extern crate curl;
 extern crate "oauth-client" as oauth;
 extern crate rand;
 
-use std::borrow::IntoCow;
+use std::borrow::{Cow, IntoCow};
 use std::collections::HashMap;
 use std::str;
-use std::string::CowString;
 use curl::http;
 use curl::http::handle::Method;
 use oauth::Token;
@@ -23,7 +22,7 @@ mod api {
     pub const ECHO: &'static str = "http://term.ie/oauth/example/echo_api.php";
 }
 
-fn split_query<'a>(query: &'a str) -> HashMap<CowString<'a>, CowString<'a>> {
+fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
     let mut param = HashMap::new();
     for q in query.split('&') {
         let mut s = q.splitn(2, '=');
