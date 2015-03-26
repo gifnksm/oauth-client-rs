@@ -2,13 +2,13 @@
         unused, unused_extern_crates, unused_import_braces,
         unused_qualifications, unused_results, unused_typecasts)]
 
-#![feature(core)]
+#![feature(convert, into_cow)]
 
 extern crate crypto;
 extern crate curl;
 #[macro_use] extern crate log;
 extern crate rand;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate time;
 extern crate url;
 
@@ -47,7 +47,7 @@ fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V)
 fn join_query<'a>(param: &ParamList<'a>) -> String {
     let mut pairs = param
         .iter()
-        .map(|(k, v)| format!("{}={}", encode(k.as_slice()), encode(v.as_slice())))
+        .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
         .collect::<Vec<_>>();
     pairs.sort();
     pairs.connect("&")
@@ -81,7 +81,7 @@ fn header(param: &ParamList) -> String{
     let mut pairs = param
         .iter()
         .filter(|&(k, _)| k.starts_with("oauth_"))
-        .map(|(k, v)| format!("{}=\"{}\"", k, encode(v.as_slice())))
+        .map(|(k, v)| format!("{}=\"{}\"", k, encode(&v)))
         .collect::<Vec<_>>();
     pairs.sort();
     format!("OAuth {}", pairs.connect(", "))
@@ -91,7 +91,7 @@ fn body(param: &ParamList) -> String{
     let mut pairs = param
         .iter()
         .filter(|&(k, _)| !k.starts_with("oauth_"))
-        .map(|(k, v)| format!("{}={}", k, encode(v.as_slice())))
+        .map(|(k, v)| format!("{}={}", k, encode(&v)))
         .collect::<Vec<_>>();
     pairs.sort();
     format!("{}", pairs.connect("&"))
@@ -102,18 +102,18 @@ fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
     let nonce = rand::thread_rng().gen_ascii_chars().take(32).collect::<String>();
 
-    let _ = insert_param(&mut param, "oauth_consumer_key",     consumer.key.as_slice());
+    let _ = insert_param(&mut param, "oauth_consumer_key",     consumer.key.as_ref());
     let _ = insert_param(&mut param, "oauth_nonce",            nonce);
     let _ = insert_param(&mut param, "oauth_signature_method", "HMAC-SHA1");
     let _ = insert_param(&mut param, "oauth_timestamp",        timestamp);
     let _ = insert_param(&mut param, "oauth_version",          "1.0");
     if let Some(tk) = token {
-        let _ = insert_param(&mut param, "oauth_token", tk.key.as_slice());
+        let _ = insert_param(&mut param, "oauth_token", tk.key.as_ref());
     }
 
     if let Some(ps) = other_param {
         for (k, v) in ps.iter() {
-            let _ = insert_param(&mut param, k.as_slice(), v.as_slice());
+            let _ = insert_param(&mut param, k.as_ref(), v.as_ref());
         }
     }
 
@@ -129,9 +129,9 @@ fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>
     };
 
     let sign = signature(method_str, uri,
-                         join_query(&param).as_slice(),
-                         consumer.secret.as_slice(),
-                         token.map(|t| t.secret.as_slice()));
+                         join_query(&param).as_ref(),
+                         consumer.secret.as_ref(),
+                         token.map(|t| t.secret.as_ref()));
     let _ = insert_param(&mut param, "oauth_signature", sign);
 
     (header(&param), body(&param))
@@ -145,7 +145,7 @@ pub fn get(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Opti
     let (header, body) = get_header(Method::Get, uri, consumer, token, other_param);
     let resp = http::handle()
         .get(if body.len() > 0 { format!("{}?{}", uri, body) } else { format!("{}", uri) })
-        .header("Authorization", header.as_slice())
+        .header("Authorization", header.as_ref())
         .exec().unwrap();
     debug!("{}", resp);
     assert_eq!(200, resp.get_code());
@@ -155,8 +155,8 @@ pub fn get(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Opti
 pub fn post(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> String {
     let (header, body) = get_header(Method::Post, uri, consumer, token, other_param);
     let resp = http::handle()
-        .post(uri, body.as_slice())
-        .header("Authorization", header.as_slice())
+        .post(uri, &body)
+        .header("Authorization", header.as_ref())
         .content_type("application/x-www-form-urlencoded")
         .exec().unwrap();
     debug!("{}", resp);

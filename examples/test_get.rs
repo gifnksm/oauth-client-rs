@@ -2,7 +2,9 @@
         unused, unused_extern_crates, unused_import_braces,
         unused_qualifications, unused_results, unused_typecasts)]
 
-extern crate "oauth-client" as oauth;
+#![feature(into_cow)]
+
+extern crate oauth_client as oauth;
 extern crate rand;
 
 use std::borrow::{Cow, IntoCow};
