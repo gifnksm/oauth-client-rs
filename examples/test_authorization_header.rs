@@ -1,14 +1,12 @@
 #![warn(bad_style,
         unused, unused_extern_crates, unused_import_braces,
-        unused_qualifications, unused_results, unused_typecasts)]
-
-#![feature(convert, into_cow)]
+        unused_qualifications, unused_results)]
 
 extern crate curl;
 extern crate oauth_client as oauth;
 extern crate rand;
 
-use std::borrow::{Cow, IntoCow};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
 use curl::http;
@@ -28,7 +26,7 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
         let mut s = q.splitn(2, '=');
         let k = s.next().unwrap();
         let v = s.next().unwrap();
-        let _ = param.insert(k.into_cow(), v.into_cow());
+        let _ = param.insert(k.into(), v.into());
     }
     param
 }

@@ -1,13 +1,11 @@
 #![warn(bad_style,
         unused, unused_extern_crates, unused_import_braces,
-        unused_qualifications, unused_results, unused_typecasts)]
-
-#![feature(into_cow)]
+        unused_qualifications, unused_results)]
 
 extern crate oauth_client as oauth;
 extern crate rand;
 
-use std::borrow::{Cow, IntoCow};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use oauth::Token;
 use rand::Rng;
@@ -24,7 +22,7 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
         let mut s = q.splitn(2, '=');
         let k = s.next().unwrap();
         let v = s.next().unwrap();
-        let _ = param.insert(k.into_cow(), v.into_cow());
+        let _ = param.insert(k.into(), v.into());
     }
     param
 }
@@ -48,11 +46,11 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
 fn echo(consumer: &Token, access: &Token) {
     let mut rng = rand::thread_rng();
     let mut req_param = HashMap::new();
-    let _ = req_param.insert("testFOO".into_cow(), "testFOO".into_cow());
-    let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect::<String>().into_cow(),
-                             rng.gen_ascii_chars().take(32).collect::<String>().into_cow());
-    let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect::<String>().into_cow(),
-                             rng.gen_ascii_chars().take(32).collect::<String>().into_cow());
+    let _ = req_param.insert("testFOO".into(), "testFOO".into());
+    let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect::<String>().into(),
+                             rng.gen_ascii_chars().take(32).collect::<String>().into());
+    let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect::<String>().into(),
+                             rng.gen_ascii_chars().take(32).collect::<String>().into());
     let resp = oauth::post(api::ECHO, consumer, Some(access), Some(&req_param));
     println!("echo response: {:?}", resp);
     // let resp_param = split_query(&resp[..]);

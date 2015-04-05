@@ -1,8 +1,6 @@
 #![warn(bad_style, missing_docs,
         unused, unused_extern_crates, unused_import_braces,
-        unused_qualifications, unused_results, unused_typecasts)]
-
-#![feature(convert, into_cow)]
+        unused_qualifications, unused_results)]
 
 extern crate crypto;
 extern crate curl;
@@ -12,7 +10,7 @@ extern crate rustc_serialize;
 extern crate time;
 extern crate url;
 
-use std::borrow::{Cow, IntoCow};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::str;
 use rand::Rng;
@@ -29,9 +27,9 @@ pub struct Token<'a> { pub key: Cow<'a, str>, pub secret: Cow<'a, str> }
 
 impl<'a> Token<'a> {
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
-        where K : IntoCow<'a, str>, S: IntoCow<'a, str>
+        where K : Into<Cow<'a, str>>, S: Into<Cow<'a, str>>
     {
-        Token { key: key.into_cow(), secret: secret.into_cow() }
+        Token { key: key.into(), secret: secret.into() }
     }
 }
 
@@ -39,9 +37,9 @@ pub type ParamList<'a> = HashMap<Cow<'a, str>, Cow<'a, str>>;
 
 fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V)
                           -> Option<Cow<'a, str>>
-    where K : IntoCow<'a, str>, V: IntoCow<'a, str>
+    where K : Into<Cow<'a, str>>, V: Into<Cow<'a, str>>
 {
-    param.insert(key.into_cow(), value.into_cow())
+    param.insert(key.into(), value.into())
 }
 
 fn join_query<'a>(param: &ParamList<'a>) -> String {
@@ -102,7 +100,7 @@ fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
     let nonce = rand::thread_rng().gen_ascii_chars().take(32).collect::<String>();
 
-    let _ = insert_param(&mut param, "oauth_consumer_key",     consumer.key.as_ref());
+    let _ = insert_param(&mut param, "oauth_consumer_key",     consumer.key.to_string());
     let _ = insert_param(&mut param, "oauth_nonce",            nonce);
     let _ = insert_param(&mut param, "oauth_signature_method", "HMAC-SHA1");
     let _ = insert_param(&mut param, "oauth_timestamp",        timestamp);
@@ -167,14 +165,13 @@ pub fn post(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Opt
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::IntoCow;
     use std::collections::HashMap;
 
     #[test]
     fn query() {
         let mut map = HashMap::new();
-        let _ = map.insert("aaa".into_cow(), "AAA".into_cow());
-        let _ = map.insert("bbbb".into_cow(), "BBBB".into_cow());
+        let _ = map.insert("aaa".into(), "AAA".into());
+        let _ = map.insert("bbbb".into(), "BBBB".into());
         let query = super::join_query(&map);
         assert_eq!("aaa=AAA&bbbb=BBBB", query);
     }
