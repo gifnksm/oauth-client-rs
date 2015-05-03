@@ -119,6 +119,7 @@ fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>
         Method::Options => "OPTIONS",
         Method::Get => "GET",
         Method::Head => "HEAD",
+        Method::Patch => "PATCH",
         Method::Post => "POST",
         Method::Put => "PUT",
         Method::Delete => "DELETE",

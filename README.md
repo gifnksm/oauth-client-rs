@@ -1,4 +1,4 @@
-# oauth-client-rs [![Build Status](https://travis-ci.org/gifnksm/oauth-client-rs.svg)](https://travis-ci.org/gifnksm/oauth-client-rs)
+# oauth-client-rs [![Build Status](https://travis-ci.org/drm343/oauth-client-rs.svg)](https://travis-ci.org/drm343/oauth-client-rs)
 
 OAuth client for Rust
 
