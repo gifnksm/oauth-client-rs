@@ -121,6 +121,7 @@ fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>
         Method::Head => "HEAD",
         Method::Post => "POST",
         Method::Put => "PUT",
+        Method::Patch => "PATCH",
         Method::Delete => "DELETE",
         Method::Trace => "TRACE",
         Method::Connect => "CONNECT"
