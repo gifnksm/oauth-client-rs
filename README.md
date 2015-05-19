@@ -16,7 +16,7 @@ oauth-client = "*"
 and this to your crate root:
 
 ```rust
-extern crate "oauth-client" as oauth_client;
+extern crate oauth_client;
 ```
 
 See [examples](./examples).
