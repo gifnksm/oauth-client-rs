@@ -23,9 +23,9 @@ script:
       travis-cargo build &&
       travis-cargo test &&
       travis-cargo bench &&
-      travis-cargo run --example test_authorization_header &&
-      travis-cargo run --example test_get &&
-      travis-cargo run --example test_post &&
+      travis-cargo run -- --example test_authorization_header &&
+      travis-cargo run -- --example test_get &&
+      travis-cargo run -- --example test_post &&
       travis-cargo --only stable doc
 
 after_success:
