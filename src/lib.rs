@@ -52,7 +52,7 @@ fn join_query<'a>(param: &ParamList<'a>) -> String {
         .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
         .collect::<Vec<_>>();
     pairs.sort();
-    pairs.connect("&")
+    pairs.join("&")
 }
 
 fn encode(s: &str) -> String {
@@ -86,7 +86,7 @@ fn header(param: &ParamList) -> String{
         .map(|(k, v)| format!("{}=\"{}\"", k, encode(&v)))
         .collect::<Vec<_>>();
     pairs.sort();
-    format!("OAuth {}", pairs.connect(", "))
+    format!("OAuth {}", pairs.join(", "))
 }
 
 fn body(param: &ParamList) -> String{
@@ -96,7 +96,7 @@ fn body(param: &ParamList) -> String{
         .map(|(k, v)| format!("{}={}", k, encode(&v)))
         .collect::<Vec<_>>();
     pairs.sort();
-    format!("{}", pairs.connect("&"))
+    format!("{}", pairs.join("&"))
 }
 
 fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> (String, String) {
