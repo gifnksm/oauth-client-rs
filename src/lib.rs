@@ -1,6 +1,10 @@
-#![warn(bad_style, missing_docs,
-        unused, unused_extern_crates, unused_import_braces,
-        unused_qualifications, unused_results)]
+#![warn(bad_style)]
+// #![warn(missing_docs)]
+#![warn(unused)]
+#![warn(unused_extern_crates)]
+#![warn(unused_import_braces)]
+#![warn(unused_qualifications)]
+#![warn(unused_results)]
 
 extern crate crypto;
 extern crate curl;
