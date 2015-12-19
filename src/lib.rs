@@ -17,15 +17,52 @@ extern crate url;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::str;
+use std::{error, fmt};
 use rand::Rng;
 use rustc_serialize::base64::{self, ToBase64};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
-use curl::http;
+use curl::http::{self, Response};
 use curl::http::handle::Method;
 use url::percent_encoding;
+
+#[derive(Debug)]
+pub enum Error {
+    Curl(curl::ErrCode),
+    HttpStatus(Response),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::Curl(ref err) => write!(f, "Curl error: {}", err),
+            Error::HttpStatus(ref resp) => write!(f, "HTTP status error: {}", resp),
+        }
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        match *self {
+            Error::Curl(ref err) => err.description(),
+            Error::HttpStatus(_) => "HTTP status error",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            Error::Curl(ref err) => Some(err),
+            Error::HttpStatus(_) => None,
+        }
+    }
+}
+
+impl From<curl::ErrCode> for Error {
+    fn from(err: curl::ErrCode) -> Error {
+        Error::Curl(err)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Token<'a> {
@@ -171,37 +208,40 @@ pub fn get(uri: &str,
            consumer: &Token,
            token: Option<&Token>,
            other_param: Option<&ParamList>)
-           -> String {
+           -> Result<Vec<u8>, Error> {
     let (header, body) = get_header(Method::Get, uri, consumer, token, other_param);
-    let resp = http::handle()
-                   .get(if body.len() > 0 {
-                       format!("{}?{}", uri, body)
-                   } else {
-                       format!("{}", uri)
-                   })
-                   .header("Authorization", header.as_ref())
-                   .exec()
-                   .unwrap();
+    let req_uri = if body.len() > 0 {
+        format!("{}?{}", uri, body)
+    } else {
+        format!("{}", uri)
+    };
+    let resp = try!(http::handle()
+                        .get(req_uri)
+                        .header("Authorization", header.as_ref())
+                        .exec());
     debug!("{}", resp);
-    assert_eq!(200, resp.get_code());
-    str::from_utf8(resp.get_body()).unwrap().to_string()
+    if resp.get_code() != 200 {
+        return Err(Error::HttpStatus(resp));
+    }
+    Ok(resp.move_body())
 }
 
 pub fn post(uri: &str,
             consumer: &Token,
             token: Option<&Token>,
             other_param: Option<&ParamList>)
-            -> String {
+            -> Result<Vec<u8>, Error> {
     let (header, body) = get_header(Method::Post, uri, consumer, token, other_param);
-    let resp = http::handle()
-                   .post(uri, &body)
-                   .header("Authorization", header.as_ref())
-                   .content_type("application/x-www-form-urlencoded")
-                   .exec()
-                   .unwrap();
+    let resp = try!(http::handle()
+                        .post(uri, &body)
+                        .header("Authorization", header.as_ref())
+                        .content_type("application/x-www-form-urlencoded")
+                        .exec());
     debug!("{}", resp);
-    assert_eq!(200, resp.get_code());
-    str::from_utf8(resp.get_body()).unwrap().to_string()
+    if resp.get_code() != 200 {
+        return Err(Error::HttpStatus(resp));
+    }
+    Ok(resp.move_body())
 }
 
 
