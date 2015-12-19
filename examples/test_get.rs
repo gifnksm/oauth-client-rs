@@ -28,7 +28,8 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
 }
 
 fn get_request_token(consumer: &Token) -> Token<'static> {
-    let resp = oauth::get(api::REQUEST_TOKEN, consumer, None, None);
+    let bytes = oauth::get(api::REQUEST_TOKEN, consumer, None, None).unwrap();
+    let resp = String::from_utf8(bytes).unwrap();
     println!("get_request_token response: {:?}", resp);
     let param = split_query(&resp);
     Token::new(param.get("oauth_token").unwrap().to_string(),
@@ -36,7 +37,8 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
 }
 
 fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
-    let resp = oauth::get(api::ACCESS_TOKEN, consumer, Some(request), None);
+    let bytes = oauth::get(api::ACCESS_TOKEN, consumer, Some(request), None).unwrap();
+    let resp = String::from_utf8(bytes).unwrap();
     println!("get_access_token response: {:?}", resp);
     let param = split_query(&resp);
     Token::new(param.get("oauth_token").unwrap().to_string(),
@@ -51,10 +53,11 @@ fn echo(consumer: &Token, access: &Token) {
                              rng.gen_ascii_chars().take(32).collect::<String>().into());
     let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect::<String>().into(),
                              rng.gen_ascii_chars().take(32).collect::<String>().into());
-    let resp = oauth::get(api::ECHO, consumer, Some(access), Some(&req_param));
+    let bytes = oauth::get(api::ECHO, consumer, Some(access), Some(&req_param)).unwrap();
+    let resp = String::from_utf8(bytes).unwrap();
     println!("echo response: {:?}", resp);
-    // let resp_param = split_query(&resp);
-    // assert_eq!(req_param, resp_param);
+    let resp_param = split_query(&resp);
+    assert_eq!(req_param, resp_param);
 }
 
 fn main() {
