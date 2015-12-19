@@ -15,9 +15,9 @@ use oauth::Token;
 use rand::Rng;
 
 mod api {
-    pub const REQUEST_TOKEN: &'static str = "http://term.ie/oauth/example/request_token.php";
-    pub const ACCESS_TOKEN: &'static str = "http://term.ie/oauth/example/access_token.php";
-    pub const ECHO: &'static str = "http://term.ie/oauth/example/echo_api.php";
+    pub const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+    pub const ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
+    pub const ECHO: &'static str = "http://oauthbin.com/v1/echo";
 }
 
 fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
