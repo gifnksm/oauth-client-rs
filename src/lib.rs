@@ -8,7 +8,8 @@
 
 extern crate crypto;
 extern crate curl;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate time;
@@ -27,30 +28,36 @@ use curl::http::handle::Method;
 use url::percent_encoding;
 
 #[derive(Clone, Debug)]
-pub struct Token<'a> { pub key: Cow<'a, str>, pub secret: Cow<'a, str> }
+pub struct Token<'a> {
+    pub key: Cow<'a, str>,
+    pub secret: Cow<'a, str>,
+}
 
 impl<'a> Token<'a> {
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
-        where K : Into<Cow<'a, str>>, S: Into<Cow<'a, str>>
+        where K: Into<Cow<'a, str>>,
+              S: Into<Cow<'a, str>>
     {
-        Token { key: key.into(), secret: secret.into() }
+        Token {
+            key: key.into(),
+            secret: secret.into(),
+        }
     }
 }
 
 pub type ParamList<'a> = HashMap<Cow<'a, str>, Cow<'a, str>>;
 
-fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V)
-                          -> Option<Cow<'a, str>>
-    where K : Into<Cow<'a, str>>, V: Into<Cow<'a, str>>
+fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option<Cow<'a, str>>
+    where K: Into<Cow<'a, str>>,
+          V: Into<Cow<'a, str>>
 {
     param.insert(key.into(), value.into())
 }
 
 fn join_query<'a>(param: &ParamList<'a>) -> String {
-    let mut pairs = param
-        .iter()
-        .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
-        .collect::<Vec<_>>();
+    let mut pairs = param.iter()
+                         .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
+                         .collect::<Vec<_>>();
     pairs.sort();
     pairs.join("&")
 }
@@ -65,50 +72,60 @@ fn hmac_sha1(key: &[u8], data: &[u8]) -> MacResult {
     hmac.result()
 }
 
-fn signature(method: &str, uri: &str, query: &str, consumer_secret: &str, token_secret: Option<&str>) -> String {
+fn signature(method: &str,
+             uri: &str,
+             query: &str,
+             consumer_secret: &str,
+             token_secret: Option<&str>)
+             -> String {
     let base = format!("{}&{}&{}", encode(method), encode(uri), encode(query));
-    let key  = format!("{}&{}", encode(consumer_secret), encode(token_secret.unwrap_or("")));
+    let key = format!("{}&{}",
+                      encode(consumer_secret),
+                      encode(token_secret.unwrap_or("")));
     let conf = base64::Config {
         char_set: base64::CharacterSet::Standard,
         newline: base64::Newline::LF,
         pad: true,
-        line_length: None
+        line_length: None,
     };
     debug!("Signature base string: {}", base);
     debug!("Authorization header: Authorization: {}", base);
     hmac_sha1(key.as_bytes(), base.as_bytes()).code().to_base64(conf)
 }
 
-fn header(param: &ParamList) -> String{
-    let mut pairs = param
-        .iter()
-        .filter(|&(k, _)| k.starts_with("oauth_"))
-        .map(|(k, v)| format!("{}=\"{}\"", k, encode(&v)))
-        .collect::<Vec<_>>();
+fn header(param: &ParamList) -> String {
+    let mut pairs = param.iter()
+                         .filter(|&(k, _)| k.starts_with("oauth_"))
+                         .map(|(k, v)| format!("{}=\"{}\"", k, encode(&v)))
+                         .collect::<Vec<_>>();
     pairs.sort();
     format!("OAuth {}", pairs.join(", "))
 }
 
-fn body(param: &ParamList) -> String{
-    let mut pairs = param
-        .iter()
-        .filter(|&(k, _)| !k.starts_with("oauth_"))
-        .map(|(k, v)| format!("{}={}", k, encode(&v)))
-        .collect::<Vec<_>>();
+fn body(param: &ParamList) -> String {
+    let mut pairs = param.iter()
+                         .filter(|&(k, _)| !k.starts_with("oauth_"))
+                         .map(|(k, v)| format!("{}={}", k, encode(&v)))
+                         .collect::<Vec<_>>();
     pairs.sort();
     format!("{}", pairs.join("&"))
 }
 
-fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> (String, String) {
+fn get_header(method: Method,
+              uri: &str,
+              consumer: &Token,
+              token: Option<&Token>,
+              other_param: Option<&ParamList>)
+              -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
     let nonce = rand::thread_rng().gen_ascii_chars().take(32).collect::<String>();
 
-    let _ = insert_param(&mut param, "oauth_consumer_key",     consumer.key.to_string());
-    let _ = insert_param(&mut param, "oauth_nonce",            nonce);
+    let _ = insert_param(&mut param, "oauth_consumer_key", consumer.key.to_string());
+    let _ = insert_param(&mut param, "oauth_nonce", nonce);
     let _ = insert_param(&mut param, "oauth_signature_method", "HMAC-SHA1");
-    let _ = insert_param(&mut param, "oauth_timestamp",        timestamp);
-    let _ = insert_param(&mut param, "oauth_version",          "1.0");
+    let _ = insert_param(&mut param, "oauth_timestamp", timestamp);
+    let _ = insert_param(&mut param, "oauth_version", "1.0");
     if let Some(tk) = token {
         let _ = insert_param(&mut param, "oauth_token", tk.key.as_ref());
     }
@@ -128,10 +145,11 @@ fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>
         Method::Patch => "PATCH",
         Method::Delete => "DELETE",
         Method::Trace => "TRACE",
-        Method::Connect => "CONNECT"
+        Method::Connect => "CONNECT",
     };
 
-    let sign = signature(method_str, uri,
+    let sign = signature(method_str,
+                         uri,
                          join_query(&param).as_ref(),
                          consumer.secret.as_ref(),
                          token.map(|t| t.secret.as_ref()));
@@ -140,28 +158,47 @@ fn get_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>
     (header(&param), body(&param))
 }
 
-pub fn authorization_header(method: Method, uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> String {
+pub fn authorization_header(method: Method,
+                            uri: &str,
+                            consumer: &Token,
+                            token: Option<&Token>,
+                            other_param: Option<&ParamList>)
+                            -> String {
     get_header(method, uri, consumer, token, other_param).0
 }
 
-pub fn get(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> String {
+pub fn get(uri: &str,
+           consumer: &Token,
+           token: Option<&Token>,
+           other_param: Option<&ParamList>)
+           -> String {
     let (header, body) = get_header(Method::Get, uri, consumer, token, other_param);
     let resp = http::handle()
-        .get(if body.len() > 0 { format!("{}?{}", uri, body) } else { format!("{}", uri) })
-        .header("Authorization", header.as_ref())
-        .exec().unwrap();
+                   .get(if body.len() > 0 {
+                       format!("{}?{}", uri, body)
+                   } else {
+                       format!("{}", uri)
+                   })
+                   .header("Authorization", header.as_ref())
+                   .exec()
+                   .unwrap();
     debug!("{}", resp);
     assert_eq!(200, resp.get_code());
     str::from_utf8(resp.get_body()).unwrap().to_string()
 }
 
-pub fn post(uri: &str, consumer: &Token, token: Option<&Token>, other_param: Option<&ParamList>) -> String {
+pub fn post(uri: &str,
+            consumer: &Token,
+            token: Option<&Token>,
+            other_param: Option<&ParamList>)
+            -> String {
     let (header, body) = get_header(Method::Post, uri, consumer, token, other_param);
     let resp = http::handle()
-        .post(uri, &body)
-        .header("Authorization", header.as_ref())
-        .content_type("application/x-www-form-urlencoded")
-        .exec().unwrap();
+                   .post(uri, &body)
+                   .header("Authorization", header.as_ref())
+                   .content_type("application/x-www-form-urlencoded")
+                   .exec()
+                   .unwrap();
     debug!("{}", resp);
     assert_eq!(200, resp.get_code());
     str::from_utf8(resp.get_body()).unwrap().to_string()

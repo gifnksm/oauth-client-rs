@@ -34,13 +34,13 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
 fn get_request_token(consumer: &Token) -> Token<'static> {
     let header = oauth::authorization_header(Method::Get, api::REQUEST_TOKEN, consumer, None, None);
     let resp = http::handle()
-        .get(api::REQUEST_TOKEN)
-        .header("Authorization", header.as_ref())
-        .exec()
-        .unwrap();
+                   .get(api::REQUEST_TOKEN)
+                   .header("Authorization", header.as_ref())
+                   .exec()
+                   .unwrap();
     let resp = str::from_utf8(resp.get_body())
-        .unwrap()
-        .to_string();
+                   .unwrap()
+                   .to_string();
     println!("get_request_token response: {:?}", resp);
     let param = split_query(resp.as_ref());
     Token::new(param.get("oauth_token").unwrap().to_string(),
@@ -48,15 +48,19 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
 }
 
 fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
-    let header = oauth::authorization_header(Method::Get, api::ACCESS_TOKEN, consumer, Some(request), None);
+    let header = oauth::authorization_header(Method::Get,
+                                             api::ACCESS_TOKEN,
+                                             consumer,
+                                             Some(request),
+                                             None);
     let resp = http::handle()
-        .get(api::ACCESS_TOKEN)
-        .header("Authorization", header.as_ref())
-        .exec()
-        .unwrap();
+                   .get(api::ACCESS_TOKEN)
+                   .header("Authorization", header.as_ref())
+                   .exec()
+                   .unwrap();
     let resp = str::from_utf8(resp.get_body())
-        .unwrap()
-        .to_string();
+                   .unwrap()
+                   .to_string();
     println!("get_access_token response: {:?}", resp);
     let param = split_query(resp.as_ref());
     Token::new(param.get("oauth_token").unwrap().to_string(),
@@ -69,10 +73,10 @@ fn echo(consumer: &Token, access: &Token) {
     let mut rng = rand::thread_rng();
     let req_body = rng.gen_ascii_chars().take(100).collect::<String>();
     let resp = http::handle()
-        .post(api::ECHO, &req_body)
-        .header("Authorization", header.as_ref())
-        .exec()
-        .unwrap();
+                   .post(api::ECHO, &req_body)
+                   .header("Authorization", header.as_ref())
+                   .exec()
+                   .unwrap();
     let resp = str::from_utf8(resp.get_body()).unwrap();
     println!("echo response: {:?}", resp);
     let resp_body: &str = resp.as_ref();
@@ -93,4 +97,3 @@ fn main() {
 
     println!("OK");
 }
-
