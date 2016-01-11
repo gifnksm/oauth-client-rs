@@ -1,4 +1,8 @@
-# oauth-client-rs [![Build Status](https://travis-ci.org/gifnksm/oauth-client-rs.svg)](https://travis-ci.org/gifnksm/oauth-client-rs) [![Coverage Status](https://coveralls.io/repos/gifnksm/oauth-client-rs/badge.svg?branch=master&service=github)](https://coveralls.io/github/gifnksm/oauth-client-rs?branch=master)
+# oauth-client-rs
+
+[![Build Status](https://travis-ci.org/gifnksm/oauth-client-rs.svg)](https://travis-ci.org/gifnksm/oauth-client-rs)
+[![Coverage Status](https://coveralls.io/repos/gifnksm/oauth-client-rs/badge.svg?branch=master&service=github)](https://coveralls.io/github/gifnksm/oauth-client-rs?branch=master)
+[![crates.io](http://meritbadge.herokuapp.com/oauth-client)](https://crates.io/crates/oauth-client)
 
 OAuth client for Rust
 
@@ -10,7 +14,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oauth-client = "*"
+oauth-client = "0.1"
 ```
 
 and this to your crate root:
