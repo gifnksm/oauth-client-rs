@@ -19,6 +19,7 @@
 //!let consumer = Token::new("key", "secret")
 //!let bytes = oauth::get(api::REQUEST_TOKEN, consumer, None, None).unwrap();
 //! ```
+
 #![warn(bad_style)]
 #![warn(missing_docs)]
 #![warn(unused)]
