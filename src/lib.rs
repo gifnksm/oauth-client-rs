@@ -16,8 +16,9 @@
 //! Send request for request token.
 //!
 //! ```
-//!let consumer = Token::new("key", "secret")
-//!let bytes = oauth::get(api::REQUEST_TOKEN, consumer, None, None).unwrap();
+//!const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+//!let consumer = oauth_client::Token::new("key", "secret");
+//!let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 //! ```
 
 #![warn(bad_style)]
@@ -92,7 +93,9 @@ impl From<curl::ErrCode> for Error {
 /// Token structure for the OAuth
 #[derive(Clone, Debug)]
 pub struct Token<'a> {
+    /// 'key' field of the token
     pub key: Cow<'a, str>,
+    /// 'secret' part of the token
     pub secret: Cow<'a, str>,
 }
 
@@ -102,7 +105,7 @@ impl<'a> Token<'a> {
     ///# Examples
     ///
     /// ```
-    ///let consumer = Token::new("key", "secret");
+    ///let consumer = oauth_client::Token::new("key", "secret");
     /// ```
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
         where K: Into<Cow<'a, str>>,
@@ -241,7 +244,14 @@ fn get_header(method: Method,
 ///# Examples
 ///
 ///```
-///let header = oauth::authorization_header(Method::Get, api::REQUEST_TOKEN, consumer, None, None);
+///# extern crate curl;
+///# extern crate oauth_client;
+/// use curl::http::handle::Method;
+///# fn main() {
+///const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+///let consumer = oauth_client::Token::new("key", "secret");
+///let header = oauth_client::authorization_header(Method::Get, REQUEST_TOKEN, &consumer, None, None);
+///# }
 ///```
 pub fn authorization_header(method: Method,
                             uri: &str,
@@ -258,8 +268,9 @@ pub fn authorization_header(method: Method,
 ///# Examples
 ///
 ///```
-///let REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token"
-///let bytes = oauth::get(REQUEST_TOKEN, consumer, None, None).unwrap();
+///let REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+///let consumer = oauth_client::Token::new("key", "secret");
+///let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 ///let resp = String::from_utf8(bytes).unwrap();
 ///```
 pub fn get(uri: &str,
@@ -290,8 +301,10 @@ pub fn get(uri: &str,
 ///# Examples
 ///
 ///```
-///let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token"
-///let bytes = oauth::post(ACCESS_TOKEN, consumer, Some(request), None).unwrap();
+///# let request = oauth_client::Token::new("key", "secret");
+///let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
+///let consumer = oauth_client::Token::new("key", "secret");
+///let bytes = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
 ///let resp = String::from_utf8(bytes).unwrap();
 ///```
 pub fn post(uri: &str,
