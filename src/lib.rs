@@ -5,8 +5,24 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
+//! OAuth 1.0 client library for Rust.
+//!
+//! Dependent on libcurl.
+//!
+//! [Repository](https://github.com/charlag/oauth-client-rs)
+//!
+//!# Examples
+//!
+//! Send request for request token.
+//!
+//! ```
+//!const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+//!let consumer = oauth_client::Token::new("key", "secret");
+//!let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
+//! ```
+
 #![warn(bad_style)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 #![warn(unused)]
 #![warn(unused_extern_crates)]
 #![warn(unused_import_braces)]
@@ -34,9 +50,12 @@ use curl::http::{self, Response};
 use curl::http::handle::Method;
 use url::percent_encoding;
 
+/// The `Error` type
 #[derive(Debug)]
 pub enum Error {
+    /// Curl error
     Curl(curl::ErrCode),
+    /// Http status
     HttpStatus(Response),
 }
 
@@ -71,13 +90,23 @@ impl From<curl::ErrCode> for Error {
     }
 }
 
+/// Token structure for the OAuth
 #[derive(Clone, Debug)]
 pub struct Token<'a> {
+    /// 'key' field of the token
     pub key: Cow<'a, str>,
+    /// 'secret' part of the token
     pub secret: Cow<'a, str>,
 }
 
 impl<'a> Token<'a> {
+    /// Create new token from `key` and `secret`
+    ///
+    ///# Examples
+    ///
+    /// ```
+    ///let consumer = oauth_client::Token::new("key", "secret");
+    /// ```
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
         where K: Into<Cow<'a, str>>,
               S: Into<Cow<'a, str>>
@@ -89,6 +118,7 @@ impl<'a> Token<'a> {
     }
 }
 
+/// Alias for `HashMap<Cow<'a, str>, Cow<'a, str>>`
 pub type ParamList<'a> = HashMap<Cow<'a, str>, Cow<'a, str>>;
 
 fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option<Cow<'a, str>>
@@ -106,16 +136,19 @@ fn join_query<'a>(param: &ParamList<'a>) -> String {
     pairs.join("&")
 }
 
+/// Percent encode string
 fn encode(s: &str) -> String {
     percent_encoding::utf8_percent_encode(s, percent_encoding::FORM_URLENCODED_ENCODE_SET)
 }
 
+/// Wrapper function around 'crypto::Hmac'
 fn hmac_sha1(key: &[u8], data: &[u8]) -> MacResult {
     let mut hmac = Hmac::new(Sha1::new(), key);
     hmac.input(data);
     hmac.result()
 }
 
+/// Create signature. See https://dev.twitter.com/oauth/overview/creating-signatures
 fn signature(method: &str,
              uri: &str,
              query: &str,
@@ -137,6 +170,7 @@ fn signature(method: &str,
     hmac_sha1(key.as_bytes(), base.as_bytes()).code().to_base64(conf)
 }
 
+/// Constuct plain-text header
 fn header(param: &ParamList) -> String {
     let mut pairs = param.iter()
                          .filter(|&(k, _)| k.starts_with("oauth_"))
@@ -146,6 +180,7 @@ fn header(param: &ParamList) -> String {
     format!("OAuth {}", pairs.join(", "))
 }
 
+/// Construct plain-text body from 'PaaramList'
 fn body(param: &ParamList) -> String {
     let mut pairs = param.iter()
                          .filter(|&(k, _)| !k.starts_with("oauth_"))
@@ -155,6 +190,7 @@ fn body(param: &ParamList) -> String {
     format!("{}", pairs.join("&"))
 }
 
+/// Create header and body
 fn get_header(method: Method,
               uri: &str,
               consumer: &Token,
@@ -202,6 +238,21 @@ fn get_header(method: Method,
     (header(&param), body(&param))
 }
 
+/// Create an authorization header.
+/// See https://dev.twitter.com/oauth/overview/authorizing-requests
+///
+///# Examples
+///
+///```
+///# extern crate curl;
+///# extern crate oauth_client;
+/// use curl::http::handle::Method;
+///# fn main() {
+///const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+///let consumer = oauth_client::Token::new("key", "secret");
+///let header = oauth_client::authorization_header(Method::Get, REQUEST_TOKEN, &consumer, None, None);
+///# }
+///```
 pub fn authorization_header(method: Method,
                             uri: &str,
                             consumer: &Token,
@@ -211,6 +262,17 @@ pub fn authorization_header(method: Method,
     get_header(method, uri, consumer, token, other_param).0
 }
 
+/// Send authorized GET request to the specified URL.
+/// `consumer` is a consumer token.
+///
+///# Examples
+///
+///```
+///let REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+///let consumer = oauth_client::Token::new("key", "secret");
+///let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
+///let resp = String::from_utf8(bytes).unwrap();
+///```
 pub fn get(uri: &str,
            consumer: &Token,
            token: Option<&Token>,
@@ -233,6 +295,18 @@ pub fn get(uri: &str,
     Ok(resp.move_body())
 }
 
+/// Send authorized POST request to the specified URL.
+/// `consumer` is a consumer token.
+///
+///# Examples
+///
+///```
+///# let request = oauth_client::Token::new("key", "secret");
+///let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
+///let consumer = oauth_client::Token::new("key", "secret");
+///let bytes = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
+///let resp = String::from_utf8(bytes).unwrap();
+///```
 pub fn post(uri: &str,
             consumer: &Token,
             token: Option<&Token>,
