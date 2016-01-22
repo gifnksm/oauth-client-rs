@@ -11,14 +11,14 @@
 //!
 //! [Repository](https://github.com/charlag/oauth-client-rs)
 //!
-//!# Examples
+//! # Examples
 //!
 //! Send request for request token.
 //!
 //! ```
-//!const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
-//!let consumer = oauth_client::Token::new("key", "secret");
-//!let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
+//! const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+//! let consumer = oauth_client::Token::new("key", "secret");
+//! let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 //! ```
 
 #![warn(bad_style)]
@@ -102,10 +102,10 @@ pub struct Token<'a> {
 impl<'a> Token<'a> {
     /// Create new token from `key` and `secret`
     ///
-    ///# Examples
+    /// # Examples
     ///
     /// ```
-    ///let consumer = oauth_client::Token::new("key", "secret");
+    /// let consumer = oauth_client::Token::new("key", "secret");
     /// ```
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
         where K: Into<Cow<'a, str>>,
@@ -241,18 +241,18 @@ fn get_header(method: Method,
 /// Create an authorization header.
 /// See https://dev.twitter.com/oauth/overview/authorizing-requests
 ///
-///# Examples
+/// # Examples
 ///
-///```
-///# extern crate curl;
-///# extern crate oauth_client;
+/// ```
+/// # extern crate curl;
+/// # extern crate oauth_client;
 /// use curl::http::handle::Method;
-///# fn main() {
-///const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
-///let consumer = oauth_client::Token::new("key", "secret");
-///let header = oauth_client::authorization_header(Method::Get, REQUEST_TOKEN, &consumer, None, None);
-///# }
-///```
+/// # fn main() {
+/// const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+/// let consumer = oauth_client::Token::new("key", "secret");
+/// let header = oauth_client::authorization_header(Method::Get, REQUEST_TOKEN, &consumer, None, None);
+/// # }
+/// ```
 pub fn authorization_header(method: Method,
                             uri: &str,
                             consumer: &Token,
@@ -265,14 +265,14 @@ pub fn authorization_header(method: Method,
 /// Send authorized GET request to the specified URL.
 /// `consumer` is a consumer token.
 ///
-///# Examples
+/// # Examples
 ///
-///```
-///let REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
-///let consumer = oauth_client::Token::new("key", "secret");
-///let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
-///let resp = String::from_utf8(bytes).unwrap();
-///```
+/// ```
+/// let REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+/// let consumer = oauth_client::Token::new("key", "secret");
+/// let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
+/// let resp = String::from_utf8(bytes).unwrap();
+/// ```
 pub fn get(uri: &str,
            consumer: &Token,
            token: Option<&Token>,
@@ -298,15 +298,15 @@ pub fn get(uri: &str,
 /// Send authorized POST request to the specified URL.
 /// `consumer` is a consumer token.
 ///
-///# Examples
+/// # Examples
 ///
-///```
-///# let request = oauth_client::Token::new("key", "secret");
-///let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
-///let consumer = oauth_client::Token::new("key", "secret");
-///let bytes = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
-///let resp = String::from_utf8(bytes).unwrap();
-///```
+/// ```
+/// # let request = oauth_client::Token::new("key", "secret");
+/// let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
+/// let consumer = oauth_client::Token::new("key", "secret");
+/// let bytes = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
+/// let resp = String::from_utf8(bytes).unwrap();
+/// ```
 pub fn post(uri: &str,
             consumer: &Token,
             token: Option<&Token>,
