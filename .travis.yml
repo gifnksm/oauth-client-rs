@@ -9,7 +9,7 @@ addons:
       - libdw-dev
 
 rust:
-  - nightly
+#  - nightly
   - beta
   - stable
 
