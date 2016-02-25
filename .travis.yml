@@ -35,7 +35,4 @@ after_success:
   # measure code coverage and upload to coveralls.io
   - travis-cargo coveralls --no-sudo
 
-env:
-  global:
-    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
-    - secure: "OodvJ/Vj1BQtq/YrDd5DuuqwxujzZUlXlIkE2l9rVVsO0MeB/4vEu6POlGvjjKao0Z+wBbrhFkoYJE3PKvapUOMFRInc/y3HXcPS57zJBj0RIicB8SnXB7aLfW4T8smaYHtm799POPDUGQNGJRBjg2nz/BdFlgWDBZRUDZNj4YI="
+
