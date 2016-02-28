@@ -13,11 +13,11 @@ rust:
 
 script:
   - cargo build 
-    cargo test 
-    cargo run -- --example test_authorization_header 
-    cargo run -- --example test_get 
-    cargo run -- --example test_post 
-    cargo doc
+  -  cargo test 
+  -  cargo run -- --example test_authorization_header 
+  -  cargo run -- --example test_get 
+  -  cargo run -- --example test_post 
+  -  cargo doc
 
 after_success:
   # upload the documentation from the build with stable (automatically only actually
