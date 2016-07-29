@@ -15,9 +15,9 @@ extern crate rand;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::io::Read;
 use std::str;
-use curl::http;
-use curl::http::handle::Method;
+use curl::easy::{Easy, List};
 use oauth::Token;
 use rand::Rng;
 
@@ -39,15 +39,25 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
 }
 
 fn get_request_token(consumer: &Token) -> Token<'static> {
-    let header = oauth::authorization_header(Method::Get, api::REQUEST_TOKEN, consumer, None, None);
-    let resp = http::handle()
-                   .get(api::REQUEST_TOKEN)
-                   .header("Authorization", header.as_ref())
-                   .exec()
-                   .unwrap();
-    let resp = str::from_utf8(resp.get_body())
-                   .unwrap()
-                   .to_string();
+    let header = oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
+    let mut handle = Easy::new();
+    let mut list = List::new();
+    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    let mut resp = Vec::new();
+    handle.url(api::REQUEST_TOKEN.as_ref()).unwrap();
+    handle.http_headers(list).unwrap();
+    handle.get(true).unwrap();
+    {
+        let mut transfer = handle.transfer();
+        transfer.write_function(|data| {
+            resp.extend_from_slice(data);
+            Ok(data.len())
+        }).unwrap();
+        transfer.perform().unwrap();
+    }
+    let resp = str::from_utf8(&resp)
+        .unwrap()
+        .to_string();
     println!("get_request_token response: {:?}", resp);
     let param = split_query(resp.as_ref());
     Token::new(param.get("oauth_token").unwrap().to_string(),
@@ -55,19 +65,29 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
 }
 
 fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
-    let header = oauth::authorization_header(Method::Get,
+    let header = oauth::authorization_header("GET",
                                              api::ACCESS_TOKEN,
                                              consumer,
                                              Some(request),
                                              None);
-    let resp = http::handle()
-                   .get(api::ACCESS_TOKEN)
-                   .header("Authorization", header.as_ref())
-                   .exec()
-                   .unwrap();
-    let resp = str::from_utf8(resp.get_body())
-                   .unwrap()
-                   .to_string();
+    let mut handle = Easy::new();
+    let mut list = List::new();
+    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    let mut resp = Vec::new();
+    handle.url(api::ACCESS_TOKEN.as_ref()).unwrap();
+    handle.http_headers(list).unwrap();
+    handle.get(true).unwrap();
+    {
+        let mut transfer = handle.transfer();
+        transfer.write_function(|data| {
+            resp.extend_from_slice(data);
+            Ok(data.len())
+        }).unwrap();
+        transfer.perform().unwrap();
+    }
+    let resp = str::from_utf8(&resp)
+        .unwrap()
+        .to_string();
     println!("get_access_token response: {:?}", resp);
     let param = split_query(resp.as_ref());
     Token::new(param.get("oauth_token").unwrap().to_string(),
@@ -75,16 +95,31 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
 }
 
 fn echo(consumer: &Token, access: &Token) {
-    let header = oauth::authorization_header(Method::Post, api::ECHO, consumer, Some(access), None);
-
+    let header = oauth::authorization_header("POST", api::ECHO, consumer, Some(access), None);
     let mut rng = rand::thread_rng();
     let req_body = rng.gen_ascii_chars().take(100).collect::<String>();
-    let resp = http::handle()
-                   .post(api::ECHO, &req_body)
-                   .header("Authorization", header.as_ref())
-                   .exec()
-                   .unwrap();
-    let resp = str::from_utf8(resp.get_body()).unwrap();
+    let mut handle = Easy::new();
+    let mut list = List::new();
+    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    list.append("Content-Type: application/octet-stream".as_ref()).unwrap();
+    let mut resp = Vec::new();
+    handle.url(api::ECHO.as_ref()).unwrap();
+    handle.http_headers(list).unwrap();
+    handle.post(true).unwrap();
+    handle.post_field_size(req_body.len() as u64).unwrap();
+    {
+        let mut transfer = handle.transfer();
+        transfer.read_function(|into| {
+            let mut req_body = req_body.as_bytes();
+            Ok(req_body.read(into).unwrap())
+        }).unwrap();
+        transfer.write_function(|data| {
+            resp.extend_from_slice(data);
+            Ok(data.len())
+        }).unwrap();
+        transfer.perform().unwrap();
+    }
+    let resp = str::from_utf8(&resp).unwrap();
     println!("echo response: {:?}", resp);
     let resp_body: &str = resp.as_ref();
     assert_eq!("", resp_body);
