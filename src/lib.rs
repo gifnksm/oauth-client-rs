@@ -40,23 +40,23 @@ extern crate url;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::io::Read;
 use std::{error, fmt};
 use rand::Rng;
 use rustc_serialize::base64::{self, ToBase64};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
-use curl::http::{self, Response};
-use curl::http::handle::Method;
+use curl::easy::{Easy, List};
 use url::percent_encoding;
 
 /// The `Error` type
 #[derive(Debug)]
 pub enum Error {
     /// Curl error
-    Curl(curl::ErrCode),
+    Curl(curl::Error),
     /// Http status
-    HttpStatus(Response),
+    HttpStatus(u32),
 }
 
 impl fmt::Display for Error {
@@ -84,8 +84,8 @@ impl error::Error for Error {
     }
 }
 
-impl From<curl::ErrCode> for Error {
-    fn from(err: curl::ErrCode) -> Error {
+impl From<curl::Error> for Error {
+    fn from(err: curl::Error) -> Error {
         Error::Curl(err)
     }
 }
@@ -191,7 +191,7 @@ fn body(param: &ParamList) -> String {
 }
 
 /// Create header and body
-fn get_header(method: Method,
+fn get_header(method: &str,
               uri: &str,
               consumer: &Token,
               token: Option<&Token>,
@@ -216,19 +216,7 @@ fn get_header(method: Method,
         }
     }
 
-    let method_str = match method {
-        Method::Options => "OPTIONS",
-        Method::Get => "GET",
-        Method::Head => "HEAD",
-        Method::Post => "POST",
-        Method::Put => "PUT",
-        Method::Patch => "PATCH",
-        Method::Delete => "DELETE",
-        Method::Trace => "TRACE",
-        Method::Connect => "CONNECT",
-    };
-
-    let sign = signature(method_str,
+    let sign = signature(method,
                          uri,
                          join_query(&param).as_ref(),
                          consumer.secret.as_ref(),
@@ -246,14 +234,13 @@ fn get_header(method: Method,
 /// ```
 /// # extern crate curl;
 /// # extern crate oauth_client;
-/// use curl::http::handle::Method;
 /// # fn main() {
 /// const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
-/// let header = oauth_client::authorization_header(Method::Get, REQUEST_TOKEN, &consumer, None, None);
+/// let header = oauth_client::authorization_header("GET", REQUEST_TOKEN, &consumer, None, None);
 /// # }
 /// ```
-pub fn authorization_header(method: Method,
+pub fn authorization_header(method: &str,
                             uri: &str,
                             consumer: &Token,
                             token: Option<&Token>,
@@ -278,21 +265,32 @@ pub fn get(uri: &str,
            token: Option<&Token>,
            other_param: Option<&ParamList>)
            -> Result<Vec<u8>, Error> {
-    let (header, body) = get_header(Method::Get, uri, consumer, token, other_param);
+    let (header, body) = get_header("GET", uri, consumer, token, other_param);
     let req_uri = if body.len() > 0 {
         format!("{}?{}", uri, body)
     } else {
         format!("{}", uri)
     };
-    let resp = try!(http::handle()
-                        .get(req_uri)
-                        .header("Authorization", header.as_ref())
-                        .exec());
-    debug!("{}", resp);
-    if resp.get_code() != 200 {
-        return Err(Error::HttpStatus(resp));
+    let mut handle = Easy::new();
+    let mut list = List::new();
+    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    let mut resp = Vec::new();
+    try!(handle.url(req_uri.as_ref()));
+    try!(handle.http_headers(list));
+    try!(handle.get(true));
+    {
+        let mut transfer = handle.transfer();
+        try!(transfer.write_function(|data| {
+            resp.extend_from_slice(data);
+            Ok(data.len())
+        }));
+        try!(transfer.perform());
     }
-    Ok(resp.move_body())
+    let code = try!(handle.response_code());
+    if code != 200 {
+        return Err(Error::HttpStatus(code))
+    }
+    Ok(resp)
 }
 
 /// Send authorized POST request to the specified URL.
@@ -312,17 +310,32 @@ pub fn post(uri: &str,
             token: Option<&Token>,
             other_param: Option<&ParamList>)
             -> Result<Vec<u8>, Error> {
-    let (header, body) = get_header(Method::Post, uri, consumer, token, other_param);
-    let resp = try!(http::handle()
-                        .post(uri, &body)
-                        .header("Authorization", header.as_ref())
-                        .content_type("application/x-www-form-urlencoded")
-                        .exec());
-    debug!("{}", resp);
-    if resp.get_code() != 200 {
-        return Err(Error::HttpStatus(resp));
+    let (header, body) = get_header("POST", uri, consumer, token, other_param);
+    let mut handle = Easy::new();
+    let mut list = List::new();
+    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    let mut resp = Vec::new();
+    try!(handle.url(uri.as_ref()));
+    try!(handle.http_headers(list));
+    try!(handle.post(true));
+    try!(handle.post_field_size(body.len() as u64));
+    {
+        let mut transfer = handle.transfer();
+        try!(transfer.read_function(|into| {
+            let mut body = body.as_bytes();
+            Ok(body.read(into).unwrap())
+        }));
+        try!(transfer.write_function(|data| {
+            resp.extend_from_slice(data);
+            Ok(data.len())
+        }));
+        try!(transfer.perform());
     }
-    Ok(resp.move_body())
+    let code = try!(handle.response_code());
+    if code != 200 {
+        return Err(Error::HttpStatus(code))
+    }
+    Ok(resp)
 }
 
 

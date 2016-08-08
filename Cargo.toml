@@ -1,19 +1,18 @@
 [package]
-
-name = "oauth-client"
-version = "0.1.2"
 authors = ["gifnksm <makoto.nksm+github@gmail.com>"]
-license = "MIT OR Apache-2.0"
-readme = "README.md"
-repository = "https://github.com/gifnksm/oauth-client-rs"
 description = "OAuth client for Rust"
 documentation = "https://gifnksm.github.io/oauth-client-rs"
+license = "MIT OR Apache-2.0"
+name = "oauth-client"
+readme = "README.md"
+repository = "https://github.com/gifnksm/oauth-client-rs"
+version = "0.1.2"
 
 [dependencies]
-time = "0.1"
-url = "0.5"
-curl = "0.2"
+curl = "0.3.1"
 log = "0.3"
 rand = "0.3"
-rustc-serialize = "0.3"
 rust-crypto = "0.2"
+rustc-serialize = "0.3"
+time = "0.1"
+url = "0.5"
