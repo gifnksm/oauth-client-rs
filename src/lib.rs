@@ -138,7 +138,8 @@ fn join_query<'a>(param: &ParamList<'a>) -> String {
 
 /// Percent encode string
 fn encode(s: &str) -> String {
-    percent_encoding::utf8_percent_encode(s, percent_encoding::FORM_URLENCODED_ENCODE_SET)
+    percent_encoding::utf8_percent_encode(s, percent_encoding::SIMPLE_ENCODE_SET)
+        .collect::<String>()
 }
 
 /// Wrapper function around 'crypto::Hmac'
