@@ -48,7 +48,7 @@ use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
 use curl::easy::{Easy, List};
-use url::percent_encoding;
+use url::{form_urlencoded, percent_encoding};
 
 /// The `Error` type
 #[derive(Debug)]
@@ -138,8 +138,7 @@ fn join_query<'a>(param: &ParamList<'a>) -> String {
 
 /// Percent encode string
 fn encode(s: &str) -> String {
-    percent_encoding::utf8_percent_encode(s, percent_encoding::SIMPLE_ENCODE_SET)
-        .collect::<String>()
+    form_urlencoded::byte_serialize(s.as_bytes()).collect::<String>()
 }
 
 /// Wrapper function around 'crypto::Hmac'
