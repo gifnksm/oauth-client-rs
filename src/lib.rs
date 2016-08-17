@@ -342,6 +342,7 @@ pub fn post(uri: &str,
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use super::encode;
 
     #[test]
     fn query() {
@@ -350,5 +351,21 @@ mod tests {
         let _ = map.insert("bbbb".into(), "BBBB".into());
         let query = super::join_query(&map);
         assert_eq!("aaa=AAA&bbbb=BBBB", query);
+    }
+
+
+    #[test]
+    fn test_encode() {
+        let method = "GET";
+        let uri = "http://oauthbin.com/v1/request-token";
+        let encoded_uri = "http%3A%2F%2Foauthbin.com%2Fv1%2Frequest-token";
+        let query = "oauth_consumer_key=key&oauth_nonce=s6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1471445561&oauth_version=1.\
+                     0";
+        let encoded_query = "oauth_consumer_key%3Dkey%26oauth_nonce%3Ds6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1471445561%26oauth_version%3D1.\
+                             0";
+
+        assert_eq!(encode(method), "GET");
+        assert_eq!(encode(uri), encoded_uri);
+        assert_eq!(encode(query), encoded_query);
     }
 }
