@@ -48,7 +48,7 @@ use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
 use curl::easy::{Easy, List};
-use url::{form_urlencoded, percent_encoding};
+use url::{form_urlencoded};
 
 /// The `Error` type
 #[derive(Debug)]
