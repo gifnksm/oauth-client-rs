@@ -48,7 +48,7 @@ use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
 use curl::easy::{Easy, List};
-use url::percent_encoding;
+use url::{form_urlencoded, percent_encoding};
 
 /// The `Error` type
 #[derive(Debug)]
@@ -138,7 +138,7 @@ fn join_query<'a>(param: &ParamList<'a>) -> String {
 
 /// Percent encode string
 fn encode(s: &str) -> String {
-    percent_encoding::utf8_percent_encode(s, percent_encoding::FORM_URLENCODED_ENCODE_SET)
+    form_urlencoded::byte_serialize(s.as_bytes()).collect::<String>()
 }
 
 /// Wrapper function around 'crypto::Hmac'
@@ -342,6 +342,7 @@ pub fn post(uri: &str,
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use super::encode;
 
     #[test]
     fn query() {
@@ -350,5 +351,21 @@ mod tests {
         let _ = map.insert("bbbb".into(), "BBBB".into());
         let query = super::join_query(&map);
         assert_eq!("aaa=AAA&bbbb=BBBB", query);
+    }
+
+
+    #[test]
+    fn test_encode() {
+        let method = "GET";
+        let uri = "http://oauthbin.com/v1/request-token";
+        let encoded_uri = "http%3A%2F%2Foauthbin.com%2Fv1%2Frequest-token";
+        let query = "oauth_consumer_key=key&oauth_nonce=s6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1471445561&oauth_version=1.\
+                     0";
+        let encoded_query = "oauth_consumer_key%3Dkey%26oauth_nonce%3Ds6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1471445561%26oauth_version%3D1.\
+                             0";
+
+        assert_eq!(encode(method), "GET");
+        assert_eq!(encode(uri), encoded_uri);
+        assert_eq!(encode(query), encoded_query);
     }
 }
