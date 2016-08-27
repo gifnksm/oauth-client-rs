@@ -48,7 +48,7 @@ use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
 use curl::easy::{Easy, List};
-use url::{form_urlencoded};
+use url::form_urlencoded;
 
 /// The `Error` type
 #[derive(Debug)]
@@ -130,8 +130,8 @@ fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option
 
 fn join_query<'a>(param: &ParamList<'a>) -> String {
     let mut pairs = param.iter()
-                         .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
-                         .collect::<Vec<_>>();
+        .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
+        .collect::<Vec<_>>();
     pairs.sort();
     pairs.join("&")
 }
@@ -173,9 +173,9 @@ fn signature(method: &str,
 /// Constuct plain-text header
 fn header(param: &ParamList) -> String {
     let mut pairs = param.iter()
-                         .filter(|&(k, _)| k.starts_with("oauth_"))
-                         .map(|(k, v)| format!("{}=\"{}\"", k, encode(&v)))
-                         .collect::<Vec<_>>();
+        .filter(|&(k, _)| k.starts_with("oauth_"))
+        .map(|(k, v)| format!("{}=\"{}\"", k, encode(&v)))
+        .collect::<Vec<_>>();
     pairs.sort();
     format!("OAuth {}", pairs.join(", "))
 }
@@ -183,9 +183,9 @@ fn header(param: &ParamList) -> String {
 /// Construct plain-text body from 'PaaramList'
 fn body(param: &ParamList) -> String {
     let mut pairs = param.iter()
-                         .filter(|&(k, _)| !k.starts_with("oauth_"))
-                         .map(|(k, v)| format!("{}={}", k, encode(&v)))
-                         .collect::<Vec<_>>();
+        .filter(|&(k, _)| !k.starts_with("oauth_"))
+        .map(|(k, v)| format!("{}={}", k, encode(&v)))
+        .collect::<Vec<_>>();
     pairs.sort();
     format!("{}", pairs.join("&"))
 }
@@ -288,7 +288,7 @@ pub fn get(uri: &str,
     }
     let code = try!(handle.response_code());
     if code != 200 {
-        return Err(Error::HttpStatus(code))
+        return Err(Error::HttpStatus(code));
     }
     Ok(resp)
 }
@@ -333,7 +333,7 @@ pub fn post(uri: &str,
     }
     let code = try!(handle.response_code());
     if code != 200 {
-        return Err(Error::HttpStatus(code))
+        return Err(Error::HttpStatus(code));
     }
     Ok(resp)
 }
