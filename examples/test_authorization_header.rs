@@ -9,7 +9,7 @@
         unused, unused_extern_crates, unused_import_braces,
         unused_qualifications, unused_results)]
 
-extern crate curl;
+extern crate hyper;
 extern crate oauth_client as oauth;
 extern crate rand;
 
@@ -17,9 +17,10 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
 use std::str;
-use curl::easy::{Easy, List};
 use oauth::Token;
 use rand::Rng;
+use hyper::Client;
+use hyper::header::{Headers,Authorization,ContentType};
 
 mod api {
     pub const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
@@ -40,21 +41,17 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
 
 fn get_request_token(consumer: &Token) -> Token<'static> {
     let header = oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
-    let mut handle = Easy::new();
-    let mut list = List::new();
-    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    let mut headers = Headers::new();
+    headers.set(
+        Authorization(
+            header  
+        )  
+    );
+    let mut client = Client::new();
     let mut resp = Vec::new();
-    handle.url(api::REQUEST_TOKEN.as_ref()).unwrap();
-    handle.http_headers(list).unwrap();
-    handle.get(true).unwrap();
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            resp.extend_from_slice(data);
-            Ok(data.len())
-        }).unwrap();
-        transfer.perform().unwrap();
-    }
+    let mut response = client.get(api::REQUEST_TOKEN).headers(headers).send().unwrap();
+    std::io::copy(&mut response,&mut resp).unwrap();
+    
     let resp = str::from_utf8(&resp)
         .unwrap()
         .to_string();
@@ -70,21 +67,17 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
                                              consumer,
                                              Some(request),
                                              None);
-    let mut handle = Easy::new();
-    let mut list = List::new();
-    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    let mut headers = Headers::new();
+    headers.set(
+        Authorization(
+            header  
+        )  
+    );
+    let mut client = Client::new();
     let mut resp = Vec::new();
-    handle.url(api::ACCESS_TOKEN.as_ref()).unwrap();
-    handle.http_headers(list).unwrap();
-    handle.get(true).unwrap();
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            resp.extend_from_slice(data);
-            Ok(data.len())
-        }).unwrap();
-        transfer.perform().unwrap();
-    }
+    let mut response = client.get(api::ACCESS_TOKEN).headers(headers).send().unwrap();
+    std::io::copy(&mut response,&mut resp).unwrap();
+    
     let resp = str::from_utf8(&resp)
         .unwrap()
         .to_string();
@@ -98,27 +91,23 @@ fn echo(consumer: &Token, access: &Token) {
     let header = oauth::authorization_header("POST", api::ECHO, consumer, Some(access), None);
     let mut rng = rand::thread_rng();
     let req_body = rng.gen_ascii_chars().take(100).collect::<String>();
-    let mut handle = Easy::new();
-    let mut list = List::new();
-    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
-    list.append("Content-Type: application/octet-stream".as_ref()).unwrap();
+    let mut headers = Headers::new();
+    headers.set(
+        Authorization(
+            header    
+        )
+    );
+    headers.set(
+        ContentType(
+            "application/octet-stream".parse().unwrap()
+        )
+    );
+
+    let mut client = Client::new();
     let mut resp = Vec::new();
-    handle.url(api::ECHO.as_ref()).unwrap();
-    handle.http_headers(list).unwrap();
-    handle.post(true).unwrap();
-    handle.post_field_size(req_body.len() as u64).unwrap();
-    {
-        let mut transfer = handle.transfer();
-        transfer.read_function(|into| {
-            let mut req_body = req_body.as_bytes();
-            Ok(req_body.read(into).unwrap())
-        }).unwrap();
-        transfer.write_function(|data| {
-            resp.extend_from_slice(data);
-            Ok(data.len())
-        }).unwrap();
-        transfer.perform().unwrap();
-    }
+    let mut response = client.post(api::ECHO).headers(headers).body(&mut std::io::Cursor::new(req_body)).send().unwrap();
+    std::io::copy(&mut response,&mut resp).unwrap();
+
     let resp = str::from_utf8(&resp).unwrap();
     println!("echo response: {:?}", resp);
     let resp_body: &str = resp.as_ref();
