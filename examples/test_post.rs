@@ -12,10 +12,10 @@
 extern crate oauth_client as oauth;
 extern crate rand;
 
-use std::borrow::Cow;
-use std::collections::HashMap;
 use oauth::Token;
 use rand::Rng;
+use std::borrow::Cow;
+use std::collections::HashMap;
 
 mod api {
     pub const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
@@ -56,10 +56,22 @@ fn echo(consumer: &Token, access: &Token) {
     let mut rng = rand::thread_rng();
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into(), "testFOO".into());
-    let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect::<String>().into(),
-                             rng.gen_ascii_chars().take(32).collect::<String>().into());
-    let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect::<String>().into(),
-                             rng.gen_ascii_chars().take(32).collect::<String>().into());
+    let _ = req_param.insert(rng.gen_ascii_chars()
+                                 .take(32)
+                                 .collect::<String>()
+                                 .into(),
+                             rng.gen_ascii_chars()
+                                 .take(32)
+                                 .collect::<String>()
+                                 .into());
+    let _ = req_param.insert(rng.gen_ascii_chars()
+                                 .take(32)
+                                 .collect::<String>()
+                                 .into(),
+                             rng.gen_ascii_chars()
+                                 .take(32)
+                                 .collect::<String>()
+                                 .into());
     let bytes = oauth::post(api::ECHO, consumer, Some(access), Some(&req_param)).unwrap();
     let resp = String::from_utf8(bytes).unwrap();
     println!("echo response: {:?}", resp);

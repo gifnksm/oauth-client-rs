@@ -36,16 +36,16 @@ extern crate reqwest;
 extern crate time;
 extern crate url;
 
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::io::{self, Read};
-use std::{error, fmt};
-use rand::Rng;
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
+use rand::Rng;
 use reqwest::{Client, StatusCode};
-use reqwest::header::{Headers, Authorization};
+use reqwest::header::{Authorization, Headers};
+use std::{error, fmt};
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::io::{self, Read};
 use url::percent_encoding;
 
 /// The `Error` type
@@ -352,8 +352,8 @@ pub fn post(uri: &str,
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use super::encode;
+    use std::collections::HashMap;
 
     #[test]
     fn query() {

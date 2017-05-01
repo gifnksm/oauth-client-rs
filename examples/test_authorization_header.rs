@@ -13,14 +13,14 @@ extern crate oauth_client as oauth;
 extern crate rand;
 extern crate reqwest;
 
+use oauth::Token;
+use rand::Rng;
+use reqwest::Client;
+use reqwest::header::{Authorization, ContentType, Headers};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
 use std::str;
-use reqwest::Client;
-use reqwest::header::{Headers, Authorization, ContentType};
-use oauth::Token;
-use rand::Rng;
 
 mod api {
     pub const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
