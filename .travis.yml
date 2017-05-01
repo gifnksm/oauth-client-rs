@@ -1,41 +1,43 @@
 language: rust
-sudo: required
-dist: trusty
+sudo: false
+
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
 
 rust:
   - nightly
   - beta
   - stable
 
-before_install:
-  - |
-      sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ xenial main universe" &&
-      sudo apt-get -yq update &&
-      sudo apt-get -yq install libcurl4-openssl-dev libelf-dev libdw-dev
-
 before_script:
-  - |
-      pip install 'travis-cargo<0.2' --user &&
-      export PATH=$HOME/.local/bin:$PATH
+  - cargo install cargo-kcov
+  - cargo kcov --print-install-kcov-sh | $SHELL
 
 script:
   - |
-      travis-cargo build &&
-      travis-cargo test &&
-      travis-cargo bench &&
-      travis-cargo run -- --example test_authorization_header &&
-      travis-cargo run -- --example test_get &&
-      travis-cargo run -- --example test_post &&
-      travis-cargo --only stable doc
+      cargo build &&
+      cargo kcov --coveralls &&
+      cargo bench &&
+      cargo run --example test_authorization_header &&
+      cargo run --example test_get &&
+      cargo run --example test_post &&
+      cargo doc
 
-after_success:
-  # upload the documentation from the build with stable (automatically only actually
-  # runs on the master branch, not individual PRs)
-  - travis-cargo --only stable doc-upload
-  # measure code coverage and upload to coveralls.io
-  - travis-cargo coveralls --no-sudo
+after_success: |
+  [ "${TRAVIS_BRANCH}" = master ] &&
+  [ "${TRAVIS_PULL_REQUEST}" == false ] &&
+  [ "${TRAVIS_RUST_VERSION}" == stable ] &&
+  cargo install ghp &&
+  ghp target/doc &&
+  git config user.name "Travis Documentation" &&
+  git config user.email "name@example.com" &&
+  git push -qf https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages 2>&1 > /dev/null
 
 env:
   global:
-    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
     - secure: "OodvJ/Vj1BQtq/YrDd5DuuqwxujzZUlXlIkE2l9rVVsO0MeB/4vEu6POlGvjjKao0Z+wBbrhFkoYJE3PKvapUOMFRInc/y3HXcPS57zJBj0RIicB8SnXB7aLfW4T8smaYHtm799POPDUGQNGJRBjg2nz/BdFlgWDBZRUDZNj4YI="
