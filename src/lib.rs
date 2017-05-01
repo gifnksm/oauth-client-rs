@@ -29,12 +29,12 @@
 #![warn(unused_qualifications)]
 #![warn(unused_results)]
 
+extern crate base64;
 extern crate crypto;
 extern crate curl;
 #[macro_use]
 extern crate log;
 extern crate rand;
-extern crate rustc_serialize;
 extern crate time;
 extern crate url;
 
@@ -43,7 +43,6 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::{error, fmt};
 use rand::Rng;
-use rustc_serialize::base64::{self, ToBase64};
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
@@ -183,17 +182,10 @@ fn signature(method: &str,
     let key = format!("{}&{}",
                       encode(consumer_secret),
                       encode(token_secret.unwrap_or("")));
-    let conf = base64::Config {
-        char_set: base64::CharacterSet::Standard,
-        newline: base64::Newline::LF,
-        pad: true,
-        line_length: None,
-    };
     debug!("Signature base string: {}", base);
     debug!("Authorization header: Authorization: {}", base);
-    hmac_sha1(key.as_bytes(), base.as_bytes())
-        .code()
-        .to_base64(conf)
+    let sha1 = hmac_sha1(key.as_bytes(), base.as_bytes());
+    base64::encode(sha1.code())
 }
 
 /// Constuct plain-text header
