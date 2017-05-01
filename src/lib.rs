@@ -7,8 +7,6 @@
 
 //! OAuth 1.0 client library for Rust.
 //!
-//! Dependent on libcurl.
-//!
 //! [Repository](https://github.com/charlag/oauth-client-rs)
 //!
 //! # Examples
@@ -31,37 +29,41 @@
 
 extern crate base64;
 extern crate crypto;
-extern crate curl;
 #[macro_use]
 extern crate log;
 extern crate rand;
+extern crate reqwest;
 extern crate time;
 extern crate url;
 
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::io::Read;
-use std::{error, fmt};
-use rand::Rng;
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
-use curl::easy::{Easy, List};
+use rand::Rng;
+use reqwest::{Client, StatusCode};
+use reqwest::header::{Authorization, Headers};
+use std::{error, fmt};
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::io::{self, Read};
 use url::percent_encoding;
 
 /// The `Error` type
 #[derive(Debug)]
 pub enum Error {
-    /// Curl error
-    Curl(curl::Error),
-    /// Http status
-    HttpStatus(u32),
+    /// Reqwest error
+    Reqwest(reqwest::Error),
+    /// Io error
+    Io(io::Error),
+    /// Http status error
+    HttpStatus(StatusCode),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::Curl(ref err) => write!(f, "Curl error: {}", err),
+            Error::Reqwest(ref err) => write!(f, "Reqwest error: {}", err),
+            Error::Io(ref err) => write!(f, "IO error: {}", err),
             Error::HttpStatus(ref resp) => write!(f, "HTTP status error: {}", resp),
         }
     }
@@ -70,22 +72,30 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     fn description(&self) -> &str {
         match *self {
-            Error::Curl(ref err) => err.description(),
+            Error::Reqwest(ref err) => err.description(),
+            Error::Io(ref err) => err.description(),
             Error::HttpStatus(_) => "HTTP status error",
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match *self {
-            Error::Curl(ref err) => Some(err),
+            Error::Reqwest(ref err) => Some(err),
+            Error::Io(ref err) => Some(err),
             Error::HttpStatus(_) => None,
         }
     }
 }
 
-impl From<curl::Error> for Error {
-    fn from(err: curl::Error) -> Error {
-        Error::Curl(err)
+impl From<reqwest::Error> for Error {
+    fn from(err: reqwest::Error) -> Error {
+        Error::Reqwest(err)
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Error {
+        Error::Io(err)
     }
 }
 
@@ -255,7 +265,6 @@ fn get_header(method: &str,
 /// # Examples
 ///
 /// ```
-/// # extern crate curl;
 /// # extern crate oauth_client;
 /// # fn main() {
 /// const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
@@ -294,27 +303,16 @@ pub fn get(uri: &str,
     } else {
         format!("{}", uri)
     };
-    let mut handle = Easy::new();
-    let mut list = List::new();
-    list.append(format!("Authorization: {}", header).as_ref())
-        .unwrap();
-    let mut resp = Vec::new();
-    try!(handle.url(req_uri.as_ref()));
-    try!(handle.http_headers(list));
-    try!(handle.get(true));
-    {
-        let mut transfer = handle.transfer();
-        try!(transfer.write_function(|data| {
-                                         resp.extend_from_slice(data);
-                                         Ok(data.len())
-                                     }));
-        try!(transfer.perform());
+    let handle = Client::new()?;
+    let mut headers = Headers::new();
+    headers.set(Authorization(header));
+    let mut response = handle.get(&req_uri).headers(headers).send()?;
+    if *response.status() != StatusCode::Ok {
+        return Err(Error::HttpStatus(*response.status()));
     }
-    let code = try!(handle.response_code());
-    if code != 200 {
-        return Err(Error::HttpStatus(code));
-    }
-    Ok(resp)
+    let mut buf = vec![];
+    let _ = response.read_to_end(&mut buf)?;
+    Ok(buf)
 }
 
 /// Send authorized POST request to the specified URL.
@@ -335,39 +333,27 @@ pub fn post(uri: &str,
             other_param: Option<&ParamList>)
             -> Result<Vec<u8>, Error> {
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
-    let mut handle = Easy::new();
-    let mut list = List::new();
-    list.append(format!("Authorization: {}", header).as_ref())
-        .unwrap();
-    let mut resp = Vec::new();
-    try!(handle.url(uri.as_ref()));
-    try!(handle.http_headers(list));
-    try!(handle.post(true));
-    try!(handle.post_field_size(body.len() as u64));
-    {
-        let mut transfer = handle.transfer();
-        try!(transfer.read_function(|into| {
-                                        let mut body = body.as_bytes();
-                                        Ok(body.read(into).unwrap())
-                                    }));
-        try!(transfer.write_function(|data| {
-                                         resp.extend_from_slice(data);
-                                         Ok(data.len())
-                                     }));
-        try!(transfer.perform());
+    let handle = Client::new()?;
+    let mut headers = Headers::new();
+    headers.set(Authorization(header));
+    let mut response = handle
+        .post(uri)
+        .body(body.as_str())
+        .headers(headers)
+        .send()?;
+    if *response.status() != StatusCode::Ok {
+        return Err(Error::HttpStatus(*response.status()));
     }
-    let code = try!(handle.response_code());
-    if code != 200 {
-        return Err(Error::HttpStatus(code));
-    }
-    Ok(resp)
+    let mut buf = vec![];
+    let _ = response.read_to_end(&mut buf)?;
+    Ok(buf)
 }
 
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use super::encode;
+    use std::collections::HashMap;
 
     #[test]
     fn query() {

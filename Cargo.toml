@@ -10,9 +10,9 @@ version = "0.1.4"
 
 [dependencies]
 base64 = "0.5"
-curl = "0.3"
 log = "0.3"
 rand = "0.3"
+reqwest = "0.5"
 rust-crypto = "0.2"
 time = "0.1"
 url = "1.2.0"
