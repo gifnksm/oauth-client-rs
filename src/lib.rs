@@ -129,7 +129,8 @@ fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option
 }
 
 fn join_query<'a>(param: &ParamList<'a>) -> String {
-    let mut pairs = param.iter()
+    let mut pairs = param
+        .iter()
         .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
         .collect::<Vec<_>>();
     pairs.sort();
@@ -190,12 +191,15 @@ fn signature(method: &str,
     };
     debug!("Signature base string: {}", base);
     debug!("Authorization header: Authorization: {}", base);
-    hmac_sha1(key.as_bytes(), base.as_bytes()).code().to_base64(conf)
+    hmac_sha1(key.as_bytes(), base.as_bytes())
+        .code()
+        .to_base64(conf)
 }
 
 /// Constuct plain-text header
 fn header(param: &ParamList) -> String {
-    let mut pairs = param.iter()
+    let mut pairs = param
+        .iter()
         .filter(|&(k, _)| k.starts_with("oauth_"))
         .map(|(k, v)| format!("{}=\"{}\"", k, encode(&v)))
         .collect::<Vec<_>>();
@@ -205,7 +209,8 @@ fn header(param: &ParamList) -> String {
 
 /// Construct plain-text body from 'PaaramList'
 fn body(param: &ParamList) -> String {
-    let mut pairs = param.iter()
+    let mut pairs = param
+        .iter()
         .filter(|&(k, _)| !k.starts_with("oauth_"))
         .map(|(k, v)| format!("{}={}", k, encode(&v)))
         .collect::<Vec<_>>();
@@ -222,7 +227,10 @@ fn get_header(method: &str,
               -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
-    let nonce = rand::thread_rng().gen_ascii_chars().take(32).collect::<String>();
+    let nonce = rand::thread_rng()
+        .gen_ascii_chars()
+        .take(32)
+        .collect::<String>();
 
     let _ = insert_param(&mut param, "oauth_consumer_key", consumer.key.to_string());
     let _ = insert_param(&mut param, "oauth_nonce", nonce);
@@ -296,7 +304,8 @@ pub fn get(uri: &str,
     };
     let mut handle = Easy::new();
     let mut list = List::new();
-    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    list.append(format!("Authorization: {}", header).as_ref())
+        .unwrap();
     let mut resp = Vec::new();
     try!(handle.url(req_uri.as_ref()));
     try!(handle.http_headers(list));
@@ -304,9 +313,9 @@ pub fn get(uri: &str,
     {
         let mut transfer = handle.transfer();
         try!(transfer.write_function(|data| {
-            resp.extend_from_slice(data);
-            Ok(data.len())
-        }));
+                                         resp.extend_from_slice(data);
+                                         Ok(data.len())
+                                     }));
         try!(transfer.perform());
     }
     let code = try!(handle.response_code());
@@ -336,7 +345,8 @@ pub fn post(uri: &str,
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
     let mut handle = Easy::new();
     let mut list = List::new();
-    list.append(format!("Authorization: {}", header).as_ref()).unwrap();
+    list.append(format!("Authorization: {}", header).as_ref())
+        .unwrap();
     let mut resp = Vec::new();
     try!(handle.url(uri.as_ref()));
     try!(handle.http_headers(list));
@@ -345,13 +355,13 @@ pub fn post(uri: &str,
     {
         let mut transfer = handle.transfer();
         try!(transfer.read_function(|into| {
-            let mut body = body.as_bytes();
-            Ok(body.read(into).unwrap())
-        }));
+                                        let mut body = body.as_bytes();
+                                        Ok(body.read(into).unwrap())
+                                    }));
         try!(transfer.write_function(|data| {
-            resp.extend_from_slice(data);
-            Ok(data.len())
-        }));
+                                         resp.extend_from_slice(data);
+                                         Ok(data.len())
+                                     }));
         try!(transfer.perform());
     }
     let code = try!(handle.response_code());
@@ -387,17 +397,17 @@ mod tests {
                      "oauth_signature_method=HMAC-SHA1&",
                      "oauth_timestamp=1471445561&",
                      "oauth_version=1.0"]
-            .iter()
-            .cloned()
-            .collect::<String>();
+                .iter()
+                .cloned()
+                .collect::<String>();
         let encoded_query = ["oauth_consumer_key%3Dkey%26",
                              "oauth_nonce%3Ds6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA%26",
                              "oauth_signature_method%3DHMAC-SHA1%26",
                              "oauth_timestamp%3D1471445561%26",
                              "oauth_version%3D1.0"]
-            .iter()
-            .cloned()
-            .collect::<String>();
+                .iter()
+                .cloned()
+                .collect::<String>();
 
         assert_eq!(encode(method), "GET");
         assert_eq!(encode(uri), encoded_uri);
