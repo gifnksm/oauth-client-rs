@@ -12,7 +12,7 @@ before_install:
       sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ xenial main universe" &&
       sudo apt-get -yq update &&
       sudo apt-get -yq install libcurl4-openssl-dev libelf-dev libdw-dev
-  
+
 before_script:
   - |
       pip install 'travis-cargo<0.2' --user &&
@@ -20,7 +20,6 @@ before_script:
 
 script:
   - |
-      curl --version &&
       travis-cargo build &&
       travis-cargo test &&
       travis-cargo bench &&
