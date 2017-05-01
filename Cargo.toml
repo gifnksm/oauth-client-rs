@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 name = "oauth-client"
 readme = "README.md"
 repository = "https://github.com/gifnksm/oauth-client-rs"
-version = "0.1.4"
+version = "0.2.0"
 
 [dependencies]
 base64 = "0.5"
