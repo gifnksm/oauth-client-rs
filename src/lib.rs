@@ -30,6 +30,8 @@
 extern crate base64;
 extern crate crypto;
 #[macro_use]
+extern crate error_chain;
+#[macro_use]
 extern crate log;
 extern crate rand;
 extern crate reqwest;
@@ -42,60 +44,25 @@ use crypto::sha1::Sha1;
 use rand::Rng;
 use reqwest::{Client, StatusCode};
 use reqwest::header::{Authorization, Headers};
-use std::{error, fmt};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Read};
 use url::percent_encoding;
 
-/// The `Error` type
-#[derive(Debug)]
-pub enum Error {
-    /// Reqwest error
-    Reqwest(reqwest::Error),
-    /// Io error
-    Io(io::Error),
-    /// Http status error
-    HttpStatus(StatusCode),
-}
+error_chain! {
+    foreign_links {
+        Reqwest(reqwest::Error) /// Reqwest error
+            ;
+        Io(io::Error)           /// IO error
+            ;
+    }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::Reqwest(ref err) => write!(f, "Reqwest error: {}", err),
-            Error::Io(ref err) => write!(f, "IO error: {}", err),
-            Error::HttpStatus(ref resp) => write!(f, "HTTP status error: {}", resp),
+    errors {
+        /// HTTP status error
+        HttpStatus(status: StatusCode) {
+            description(status.canonical_reason().unwrap_or("unknown http status"))
+            display("HTTP status error: {}", status)
         }
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        match *self {
-            Error::Reqwest(ref err) => err.description(),
-            Error::Io(ref err) => err.description(),
-            Error::HttpStatus(_) => "HTTP status error",
-        }
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        match *self {
-            Error::Reqwest(ref err) => Some(err),
-            Error::Io(ref err) => Some(err),
-            Error::HttpStatus(_) => None,
-        }
-    }
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(err: reqwest::Error) -> Error {
-        Error::Reqwest(err)
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Error {
-        Error::Io(err)
     }
 }
 
@@ -296,7 +263,7 @@ pub fn get(uri: &str,
            consumer: &Token,
            token: Option<&Token>,
            other_param: Option<&ParamList>)
-           -> Result<Vec<u8>, Error> {
+           -> Result<Vec<u8>> {
     let (header, body) = get_header("GET", uri, consumer, token, other_param);
     let req_uri = if body.len() > 0 {
         format!("{}?{}", uri, body)
@@ -308,7 +275,7 @@ pub fn get(uri: &str,
     headers.set(Authorization(header));
     let mut response = handle.get(&req_uri).headers(headers).send()?;
     if *response.status() != StatusCode::Ok {
-        return Err(Error::HttpStatus(*response.status()));
+        bail!(ErrorKind::HttpStatus(*response.status()));
     }
     let mut buf = vec![];
     let _ = response.read_to_end(&mut buf)?;
@@ -331,7 +298,7 @@ pub fn post(uri: &str,
             consumer: &Token,
             token: Option<&Token>,
             other_param: Option<&ParamList>)
-            -> Result<Vec<u8>, Error> {
+            -> Result<Vec<u8>> {
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
     let handle = Client::new()?;
     let mut headers = Headers::new();
@@ -342,7 +309,7 @@ pub fn post(uri: &str,
         .headers(headers)
         .send()?;
     if *response.status() != StatusCode::Ok {
-        return Err(Error::HttpStatus(*response.status()));
+        bail!(ErrorKind::HttpStatus(*response.status()));
     }
     let mut buf = vec![];
     let _ = response.read_to_end(&mut buf)?;
