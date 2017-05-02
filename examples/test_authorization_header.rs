@@ -16,7 +16,7 @@ extern crate reqwest;
 use oauth::Token;
 use rand::Rng;
 use reqwest::Client;
-use reqwest::header::{Authorization, ContentType, Headers};
+use reqwest::header::{Authorization, Headers};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
@@ -40,7 +40,8 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
 }
 
 fn get_request_token(consumer: &Token) -> Token<'static> {
-    let header = oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
+    let (header, _body) =
+        oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
     let handle = Client::new().unwrap();
     let mut headers = Headers::new();
     headers.set(Authorization(header));
@@ -58,7 +59,7 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
 }
 
 fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
-    let header =
+    let (header, _body) =
         oauth::authorization_header("GET", api::ACCESS_TOKEN, consumer, Some(request), None);
     let handle = Client::new().unwrap();
     let mut headers = Headers::new();
@@ -77,24 +78,32 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
 }
 
 fn echo(consumer: &Token, access: &Token) {
-    let header = oauth::authorization_header("POST", api::ECHO, consumer, Some(access), None);
     let mut rng = rand::thread_rng();
-    let req_body = rng.gen_ascii_chars().take(100).collect::<String>();
-    let handle = Client::new().unwrap();
+    let mut req_param = HashMap::new();
+    let _ = req_param.insert("testFOO".into(), "testFoo".into());
+    for _ in 0..2 {
+        let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect(),
+                                 rng.gen_ascii_chars().take(32).collect());
+    }
+    let (header, body) =
+        oauth::authorization_header("POST", api::ECHO, consumer, Some(access), Some(&req_param));
+
     let mut headers = Headers::new();
     headers.set(Authorization(header));
-    headers.set(ContentType("application/octet-stream".parse().unwrap()));
-    let mut response = handle
+
+    let mut response = Client::new()
+        .unwrap()
         .post(api::ECHO)
         .headers(headers)
-        .body(req_body.as_str())
+        .body(body.as_str())
         .send()
         .unwrap();
+
     let mut resp = String::new();
     let _ = response.read_to_string(&mut resp).unwrap();
     println!("echo response: {:?}", resp);
     let resp_body: &str = resp.as_ref();
-    assert_eq!("", resp_body);
+    assert_eq!(body, resp_body);
 }
 
 fn main() {

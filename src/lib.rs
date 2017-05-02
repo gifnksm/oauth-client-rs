@@ -42,7 +42,7 @@ use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
 use rand::Rng;
-use reqwest::{Client, StatusCode};
+use reqwest::{Client, RequestBuilder, StatusCode};
 use reqwest::header::{Authorization, Headers};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -244,8 +244,8 @@ pub fn authorization_header(method: &str,
                             consumer: &Token,
                             token: Option<&Token>,
                             other_param: Option<&ParamList>)
-                            -> String {
-    get_header(method, uri, consumer, token, other_param).0
+                            -> (String, String) {
+    get_header(method, uri, consumer, token, other_param)
 }
 
 /// Send authorized GET request to the specified URL.
@@ -270,16 +270,13 @@ pub fn get(uri: &str,
     } else {
         format!("{}", uri)
     };
-    let handle = Client::new()?;
+
     let mut headers = Headers::new();
     headers.set(Authorization(header));
-    let mut response = handle.get(&req_uri).headers(headers).send()?;
-    if *response.status() != StatusCode::Ok {
-        bail!(ErrorKind::HttpStatus(*response.status()));
-    }
-    let mut buf = vec![];
-    let _ = response.read_to_end(&mut buf)?;
-    Ok(buf)
+
+    let req = Client::new()?.get(&req_uri).headers(headers);
+    let rsp = send(req)?;
+    Ok(rsp)
 }
 
 /// Send authorized POST request to the specified URL.
@@ -300,14 +297,21 @@ pub fn post(uri: &str,
             other_param: Option<&ParamList>)
             -> Result<Vec<u8>> {
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
-    let handle = Client::new()?;
+
     let mut headers = Headers::new();
     headers.set(Authorization(header));
-    let mut response = handle
+
+    let req = Client::new()?
         .post(uri)
         .body(body.as_str())
-        .headers(headers)
-        .send()?;
+        .headers(headers);
+    let rsp = send(req)?;
+    Ok(rsp)
+}
+
+/// Send request to the server
+fn send(builder: RequestBuilder) -> Result<Vec<u8>> {
+    let mut response = builder.send()?;
     if *response.status() != StatusCode::Ok {
         bail!(ErrorKind::HttpStatus(*response.status()));
     }
