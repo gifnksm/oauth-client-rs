@@ -56,22 +56,10 @@ fn echo(consumer: &Token, access: &Token) {
     let mut rng = rand::thread_rng();
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into(), "testFOO".into());
-    let _ = req_param.insert(rng.gen_ascii_chars()
-                                 .take(32)
-                                 .collect::<String>()
-                                 .into(),
-                             rng.gen_ascii_chars()
-                                 .take(32)
-                                 .collect::<String>()
-                                 .into());
-    let _ = req_param.insert(rng.gen_ascii_chars()
-                                 .take(32)
-                                 .collect::<String>()
-                                 .into(),
-                             rng.gen_ascii_chars()
-                                 .take(32)
-                                 .collect::<String>()
-                                 .into());
+    for _ in 0..2 {
+        let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect(),
+                                 rng.gen_ascii_chars().take(32).collect());
+    }
     let bytes = oauth::get(api::ECHO, consumer, Some(access), Some(&req_param)).unwrap();
     let resp = String::from_utf8(bytes).unwrap();
     println!("echo response: {:?}", resp);
