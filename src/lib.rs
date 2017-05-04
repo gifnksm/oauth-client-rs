@@ -177,7 +177,7 @@ fn header(param: &ParamList) -> String {
     format!("OAuth {}", pairs.join(", "))
 }
 
-/// Construct plain-text body from 'PaaramList'
+/// Construct plain-text body from 'ParamList'
 fn body(param: &ParamList) -> String {
     let mut pairs = param
         .iter()
