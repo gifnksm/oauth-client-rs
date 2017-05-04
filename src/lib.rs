@@ -43,7 +43,8 @@ use crypto::mac::{Mac, MacResult};
 use crypto::sha1::Sha1;
 use rand::Rng;
 use reqwest::{Client, RequestBuilder, StatusCode};
-use reqwest::header::{Authorization, Headers};
+use reqwest::header::{Authorization, ContentType, Headers};
+use reqwest::mime::{Mime, SubLevel, TopLevel};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Read};
@@ -300,6 +301,7 @@ pub fn post(uri: &str,
 
     let mut headers = Headers::new();
     headers.set(Authorization(header));
+    headers.set(ContentType(Mime(TopLevel::Application, SubLevel::WwwFormUrlEncoded, vec![])));
 
     let req = Client::new()?
         .post(uri)
