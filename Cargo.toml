@@ -9,11 +9,11 @@ repository = "https://github.com/gifnksm/oauth-client-rs"
 version = "0.3.2"
 
 [dependencies]
-base64 = "0.5"
+base64 = "0.6"
 error-chain = "0.10"
 log = "0.3"
 rand = "0.3"
-reqwest = "0.5"
+reqwest = "0.7"
 rust-crypto = "0.2"
 time = "0.1"
 url = "1.2.0"

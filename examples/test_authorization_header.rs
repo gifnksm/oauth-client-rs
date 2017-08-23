@@ -5,9 +5,8 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-#![warn(bad_style,
-        unused, unused_extern_crates, unused_import_braces,
-        unused_qualifications, unused_results)]
+#![warn(bad_style, unused, unused_extern_crates, unused_import_braces, unused_qualifications,
+       unused_results)]
 
 extern crate oauth_client as oauth;
 extern crate rand;
@@ -47,6 +46,7 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
     headers.set(Authorization(header));
     let mut response = handle
         .get(api::REQUEST_TOKEN)
+        .unwrap()
         .headers(headers)
         .send()
         .unwrap();
@@ -54,8 +54,10 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
     let _ = response.read_to_string(&mut resp).unwrap();
     println!("get_request_token response: {:?}", resp);
     let param = split_query(resp.as_ref());
-    Token::new(param.get("oauth_token").unwrap().to_string(),
-               param.get("oauth_token_secret").unwrap().to_string())
+    Token::new(
+        param.get("oauth_token").unwrap().to_string(),
+        param.get("oauth_token_secret").unwrap().to_string(),
+    )
 }
 
 fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
@@ -66,6 +68,7 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
     headers.set(Authorization(header));
     let mut response = handle
         .get(api::ACCESS_TOKEN)
+        .unwrap()
         .headers(headers)
         .send()
         .unwrap();
@@ -73,8 +76,10 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
     let _ = response.read_to_string(&mut resp).unwrap();
     println!("get_access_token response: {:?}", resp);
     let param = split_query(resp.as_ref());
-    Token::new(param.get("oauth_token").unwrap().to_string(),
-               param.get("oauth_token_secret").unwrap().to_string())
+    Token::new(
+        param.get("oauth_token").unwrap().to_string(),
+        param.get("oauth_token_secret").unwrap().to_string(),
+    )
 }
 
 fn echo(consumer: &Token, access: &Token) {
@@ -82,8 +87,10 @@ fn echo(consumer: &Token, access: &Token) {
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into(), "testFoo".into());
     for _ in 0..2 {
-        let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect(),
-                                 rng.gen_ascii_chars().take(32).collect());
+        let _ = req_param.insert(
+            rng.gen_ascii_chars().take(32).collect(),
+            rng.gen_ascii_chars().take(32).collect(),
+        );
     }
     let (header, body) =
         oauth::authorization_header("POST", api::ECHO, consumer, Some(access), Some(&req_param));
@@ -94,8 +101,9 @@ fn echo(consumer: &Token, access: &Token) {
     let mut response = Client::new()
         .unwrap()
         .post(api::ECHO)
+        .unwrap()
         .headers(headers)
-        .body(body.as_str())
+        .body(body.clone())
         .send()
         .unwrap();
 
