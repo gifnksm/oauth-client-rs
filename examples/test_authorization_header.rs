@@ -41,12 +41,11 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
 fn get_request_token(consumer: &Token) -> Token<'static> {
     let (header, _body) =
         oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
-    let handle = Client::new().unwrap();
+    let handle = Client::new();
     let mut headers = Headers::new();
     headers.set(Authorization(header));
     let mut response = handle
         .get(api::REQUEST_TOKEN)
-        .unwrap()
         .headers(headers)
         .send()
         .unwrap();
@@ -63,12 +62,11 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
 fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
     let (header, _body) =
         oauth::authorization_header("GET", api::ACCESS_TOKEN, consumer, Some(request), None);
-    let handle = Client::new().unwrap();
+    let handle = Client::new();
     let mut headers = Headers::new();
     headers.set(Authorization(header));
     let mut response = handle
         .get(api::ACCESS_TOKEN)
-        .unwrap()
         .headers(headers)
         .send()
         .unwrap();
@@ -99,9 +97,7 @@ fn echo(consumer: &Token, access: &Token) {
     headers.set(Authorization(header));
 
     let mut response = Client::new()
-        .unwrap()
         .post(api::ECHO)
-        .unwrap()
         .headers(headers)
         .body(body.clone())
         .send()

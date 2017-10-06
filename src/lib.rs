@@ -284,8 +284,8 @@ pub fn get(
     let mut headers = Headers::new();
     let _ = headers.set(Authorization(header));
 
-    let client = Client::new()?;
-    let mut get = client.get(&req_uri)?;
+    let client = Client::new();
+    let mut get = client.get(&req_uri);
     let req = get.body(body).headers(headers);
     let rsp = send(req)?;
     Ok(rsp)
@@ -316,8 +316,8 @@ pub fn post(
     headers.set(ContentType(
         "application/www-form-url-encoded".parse().unwrap(),
     ));
-    let client = Client::new()?;
-    let mut post = client.post(uri)?;
+    let client = Client::new();
+    let mut post = client.post(uri);
     let req = post.body(body).headers(headers);
     let rsp = send(req)?;
     Ok(rsp)
