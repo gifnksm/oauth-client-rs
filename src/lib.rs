@@ -28,23 +28,21 @@
 #![warn(unused_results)]
 
 extern crate base64;
-extern crate crypto;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate log;
 extern crate rand;
 extern crate reqwest;
+extern crate ring;
 extern crate time;
 extern crate url;
-
-use crypto::hmac::Hmac;
-use crypto::mac::{Mac, MacResult};
-use crypto::sha1::Sha1;
 use rand::Rng;
 use reqwest::{Client, RequestBuilder, StatusCode};
 use reqwest::header::{Authorization, ContentType, Headers};
 use reqwest::mime::{Mime, SubLevel, TopLevel};
+use ring::digest;
+use ring::hmac;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Read};
@@ -142,13 +140,6 @@ fn encode(s: &str) -> String {
     percent_encoding::percent_encode(s.as_bytes(), StrictEncodeSet).collect()
 }
 
-/// Wrapper function around 'crypto::Hmac'
-fn hmac_sha1(key: &[u8], data: &[u8]) -> MacResult {
-    let mut hmac = Hmac::new(Sha1::new(), key);
-    hmac.input(data);
-    hmac.result()
-}
-
 /// Create signature. See https://dev.twitter.com/oauth/overview/creating-signatures
 fn signature(method: &str,
              uri: &str,
@@ -162,8 +153,9 @@ fn signature(method: &str,
                       encode(token_secret.unwrap_or("")));
     debug!("Signature base string: {}", base);
     debug!("Authorization header: Authorization: {}", base);
-    let sha1 = hmac_sha1(key.as_bytes(), base.as_bytes());
-    base64::encode(sha1.code())
+    let signing_key = hmac::SigningKey::new(&digest::SHA1, key.as_bytes());
+    let signature = hmac::sign(&signing_key, base.as_bytes());
+    base64::encode(signature.as_ref())
 }
 
 /// Constuct plain-text header
