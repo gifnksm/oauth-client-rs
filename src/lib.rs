@@ -28,43 +28,35 @@
 #![allow(unused_doc_comment)]
 
 extern crate base64;
-extern crate crypto;
-#[macro_use]
-extern crate error_chain;
+extern crate failure;
+#[macro_use] 
+extern crate failure_derive;
 #[macro_use]
 extern crate log;
 extern crate rand;
 extern crate reqwest;
 extern crate time;
 extern crate url;
+extern crate ring;
 
-use crypto::hmac::Hmac;
-use crypto::mac::{Mac, MacResult};
-use crypto::sha1::Sha1;
+// use crypto::hmac::Hmac;
+// use crypto::mac::{Mac, MacResult};
+// use crypto::sha1::Sha1;
+
+use ring::{hmac, digest};
 use rand::Rng;
 use reqwest::{Client, RequestBuilder, StatusCode};
 use reqwest::header::{Authorization, ContentType, Headers};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::{self, Read};
+use std::io::Read;
 use url::percent_encoding;
 
-error_chain! {
-    foreign_links {
-        Reqwest(reqwest::Error) /// Reqwest error
-            ;
-        Io(io::Error)           /// IO error
-            ;
-    }
+pub type Result<T> = std::result::Result<T, failure::Error>;
 
-    errors {
-        /// HTTP status error
-        HttpStatus(status: StatusCode) {
-            description(status.canonical_reason().unwrap_or("unknown http status"))
-            display("HTTP status error: {}", status)
-        }
-    }
-}
+#[derive(Debug, Fail, Clone, Copy)]
+#[fail(display = "HTTP status error code {}", _0)]
+pub struct HttpStatusError(pub u16);
 
 /// Token structure for the OAuth
 #[derive(Clone, Debug)]
@@ -143,11 +135,9 @@ fn encode(s: &str) -> String {
     percent_encoding::percent_encode(s.as_bytes(), StrictEncodeSet).collect()
 }
 
-/// Wrapper function around 'crypto::Hmac'
-fn hmac_sha1(key: &[u8], data: &[u8]) -> MacResult {
-    let mut hmac = Hmac::new(Sha1::new(), key);
-    hmac.input(data);
-    hmac.result()
+fn hmac_sha1(key: &[u8], data: &[u8]) -> hmac::Signature {
+    let signing_key = hmac::SigningKey::new(&digest::SHA1, key);
+    hmac::sign(&signing_key, data)
 }
 
 /// Create signature. See https://dev.twitter.com/oauth/overview/creating-signatures
@@ -167,7 +157,7 @@ fn signature(
     debug!("Signature base string: {}", base);
     debug!("Authorization header: Authorization: {}", base);
     let sha1 = hmac_sha1(key.as_bytes(), base.as_bytes());
-    base64::encode(sha1.code())
+    base64::encode(&sha1)
 }
 
 /// Constuct plain-text header
@@ -327,7 +317,7 @@ pub fn post(
 fn send(builder: &mut RequestBuilder) -> Result<Vec<u8>> {
     let mut response = builder.send()?;
     if response.status() != StatusCode::Ok {
-        bail!(ErrorKind::HttpStatus(response.status()));
+        return Err(HttpStatusError(response.status().into()).into());
     }
     let mut buf = vec![];
     let _ = response.read_to_end(&mut buf)?;
