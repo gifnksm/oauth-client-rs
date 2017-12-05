@@ -39,10 +39,6 @@ extern crate time;
 extern crate url;
 extern crate ring;
 
-// use crypto::hmac::Hmac;
-// use crypto::mac::{Mac, MacResult};
-// use crypto::sha1::Sha1;
-
 use ring::{hmac, digest};
 use rand::Rng;
 use reqwest::{Client, RequestBuilder, StatusCode};
@@ -52,8 +48,10 @@ use std::collections::HashMap;
 use std::io::Read;
 use url::percent_encoding;
 
+/// Result type.
 pub type Result<T> = std::result::Result<T, failure::Error>;
 
+/// An error happening due to a HTTP status error.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "HTTP status error code {}", _0)]
 pub struct HttpStatusError(pub u16);
