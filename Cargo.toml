@@ -16,5 +16,5 @@ log = "0.4"
 rand = "0.4"
 reqwest = "0.8"
 time = "0.1"
-ring = "0.12.1"
+ring = { git = "https://github.com/SergioBenitez/ring", branch = "v0.11" }
 url = "1.6.0"
