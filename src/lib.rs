@@ -133,11 +133,6 @@ fn encode(s: &str) -> String {
     percent_encoding::percent_encode(s.as_bytes(), StrictEncodeSet).collect()
 }
 
-fn hmac_sha1(key: &[u8], data: &[u8]) -> hmac::Signature {
-    let signing_key = hmac::SigningKey::new(&digest::SHA1, key);
-    hmac::sign(&signing_key, data)
-}
-
 /// Create signature. See https://dev.twitter.com/oauth/overview/creating-signatures
 fn signature(
     method: &str,
@@ -154,8 +149,9 @@ fn signature(
     );
     debug!("Signature base string: {}", base);
     debug!("Authorization header: Authorization: {}", base);
-    let sha1 = hmac_sha1(key.as_bytes(), base.as_bytes());
-    base64::encode(&sha1)
+    let signing_key = hmac::SigningKey::new(&digest::SHA1, key.as_bytes());
+    let signature = hmac::sign(&signing_key, base.as_bytes());
+    base64::encode(signature.as_ref())
 }
 
 /// Constuct plain-text header
