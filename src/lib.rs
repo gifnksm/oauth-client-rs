@@ -18,7 +18,6 @@
 //! let consumer = oauth_client::Token::new("key", "secret");
 //! let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 //! ```
-
 #![warn(bad_style)]
 #![warn(missing_docs)]
 #![warn(unused)]
@@ -26,46 +25,36 @@
 #![warn(unused_import_braces)]
 #![warn(unused_qualifications)]
 #![warn(unused_results)]
+#![allow(unused_doc_comment)]
 
 extern crate base64;
-extern crate crypto;
-#[macro_use]
-extern crate error_chain;
+extern crate failure;
+#[macro_use] 
+extern crate failure_derive;
 #[macro_use]
 extern crate log;
 extern crate rand;
 extern crate reqwest;
 extern crate time;
 extern crate url;
+extern crate ring;
 
-use crypto::hmac::Hmac;
-use crypto::mac::{Mac, MacResult};
-use crypto::sha1::Sha1;
+use ring::{hmac, digest};
 use rand::Rng;
 use reqwest::{Client, RequestBuilder, StatusCode};
 use reqwest::header::{Authorization, ContentType, Headers};
-use reqwest::mime::{Mime, SubLevel, TopLevel};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::{self, Read};
+use std::io::Read;
 use url::percent_encoding;
 
-error_chain! {
-    foreign_links {
-        Reqwest(reqwest::Error) /// Reqwest error
-            ;
-        Io(io::Error)           /// IO error
-            ;
-    }
+/// Result type.
+pub type Result<T> = std::result::Result<T, failure::Error>;
 
-    errors {
-        /// HTTP status error
-        HttpStatus(status: StatusCode) {
-            description(status.canonical_reason().unwrap_or("unknown http status"))
-            display("HTTP status error: {}", status)
-        }
-    }
-}
+/// An error happening due to a HTTP status error.
+#[derive(Debug, Fail, Clone, Copy)]
+#[fail(display = "HTTP status error code {}", _0)]
+pub struct HttpStatusError(pub u16);
 
 /// Token structure for the OAuth
 #[derive(Clone, Debug)]
@@ -85,8 +74,9 @@ impl<'a> Token<'a> {
     /// let consumer = oauth_client::Token::new("key", "secret");
     /// ```
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
-        where K: Into<Cow<'a, str>>,
-              S: Into<Cow<'a, str>>
+    where
+        K: Into<Cow<'a, str>>,
+        S: Into<Cow<'a, str>>,
     {
         Token {
             key: key.into(),
@@ -99,8 +89,9 @@ impl<'a> Token<'a> {
 pub type ParamList<'a> = HashMap<Cow<'a, str>, Cow<'a, str>>;
 
 fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option<Cow<'a, str>>
-    where K: Into<Cow<'a, str>>,
-          V: Into<Cow<'a, str>>
+where
+    K: Into<Cow<'a, str>>,
+    V: Into<Cow<'a, str>>,
 {
     param.insert(key.into(), value.into())
 }
@@ -142,28 +133,29 @@ fn encode(s: &str) -> String {
     percent_encoding::percent_encode(s.as_bytes(), StrictEncodeSet).collect()
 }
 
-/// Wrapper function around 'crypto::Hmac'
-fn hmac_sha1(key: &[u8], data: &[u8]) -> MacResult {
-    let mut hmac = Hmac::new(Sha1::new(), key);
-    hmac.input(data);
-    hmac.result()
+fn hmac_sha1(key: &[u8], data: &[u8]) -> hmac::Signature {
+    let signing_key = hmac::SigningKey::new(&digest::SHA1, key);
+    hmac::sign(&signing_key, data)
 }
 
 /// Create signature. See https://dev.twitter.com/oauth/overview/creating-signatures
-fn signature(method: &str,
-             uri: &str,
-             query: &str,
-             consumer_secret: &str,
-             token_secret: Option<&str>)
-             -> String {
+fn signature(
+    method: &str,
+    uri: &str,
+    query: &str,
+    consumer_secret: &str,
+    token_secret: Option<&str>,
+) -> String {
     let base = format!("{}&{}&{}", encode(method), encode(uri), encode(query));
-    let key = format!("{}&{}",
-                      encode(consumer_secret),
-                      encode(token_secret.unwrap_or("")));
+    let key = format!(
+        "{}&{}",
+        encode(consumer_secret),
+        encode(token_secret.unwrap_or(""))
+    );
     debug!("Signature base string: {}", base);
     debug!("Authorization header: Authorization: {}", base);
     let sha1 = hmac_sha1(key.as_bytes(), base.as_bytes());
-    base64::encode(sha1.code())
+    base64::encode(&sha1)
 }
 
 /// Constuct plain-text header
@@ -189,12 +181,13 @@ fn body(param: &ParamList) -> String {
 }
 
 /// Create header and body
-fn get_header(method: &str,
-              uri: &str,
-              consumer: &Token,
-              token: Option<&Token>,
-              other_param: Option<&ParamList>)
-              -> (String, String) {
+fn get_header(
+    method: &str,
+    uri: &str,
+    consumer: &Token,
+    token: Option<&Token>,
+    other_param: Option<&ParamList>,
+) -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
     let nonce = rand::thread_rng()
@@ -217,11 +210,13 @@ fn get_header(method: &str,
         }
     }
 
-    let sign = signature(method,
-                         uri,
-                         join_query(&param).as_ref(),
-                         consumer.secret.as_ref(),
-                         token.map(|t| t.secret.as_ref()));
+    let sign = signature(
+        method,
+        uri,
+        join_query(&param).as_ref(),
+        consumer.secret.as_ref(),
+        token.map(|t| t.secret.as_ref()),
+    );
     let _ = insert_param(&mut param, "oauth_signature", sign);
 
     (header(&param), body(&param))
@@ -240,12 +235,13 @@ fn get_header(method: &str,
 /// let header = oauth_client::authorization_header("GET", REQUEST_TOKEN, &consumer, None, None);
 /// # }
 /// ```
-pub fn authorization_header(method: &str,
-                            uri: &str,
-                            consumer: &Token,
-                            token: Option<&Token>,
-                            other_param: Option<&ParamList>)
-                            -> (String, String) {
+pub fn authorization_header(
+    method: &str,
+    uri: &str,
+    consumer: &Token,
+    token: Option<&Token>,
+    other_param: Option<&ParamList>,
+) -> (String, String) {
     get_header(method, uri, consumer, token, other_param)
 }
 
@@ -260,11 +256,12 @@ pub fn authorization_header(method: &str,
 /// let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 /// let resp = String::from_utf8(bytes).unwrap();
 /// ```
-pub fn get(uri: &str,
-           consumer: &Token,
-           token: Option<&Token>,
-           other_param: Option<&ParamList>)
-           -> Result<Vec<u8>> {
+pub fn get(
+    uri: &str,
+    consumer: &Token,
+    token: Option<&Token>,
+    other_param: Option<&ParamList>,
+) -> Result<Vec<u8>> {
     let (header, body) = get_header("GET", uri, consumer, token, other_param);
     let req_uri = if body.len() > 0 {
         format!("{}?{}", uri, body)
@@ -273,9 +270,11 @@ pub fn get(uri: &str,
     };
 
     let mut headers = Headers::new();
-    headers.set(Authorization(header));
+    let _ = headers.set(Authorization(header));
 
-    let req = Client::new()?.get(&req_uri).headers(headers);
+    let client = Client::new();
+    let mut get = client.get(&req_uri);
+    let req = get.body(body).headers(headers);
     let rsp = send(req)?;
     Ok(rsp)
 }
@@ -292,30 +291,31 @@ pub fn get(uri: &str,
 /// let bytes = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
 /// let resp = String::from_utf8(bytes).unwrap();
 /// ```
-pub fn post(uri: &str,
-            consumer: &Token,
-            token: Option<&Token>,
-            other_param: Option<&ParamList>)
-            -> Result<Vec<u8>> {
+pub fn post(
+    uri: &str,
+    consumer: &Token,
+    token: Option<&Token>,
+    other_param: Option<&ParamList>,
+) -> Result<Vec<u8>> {
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
 
     let mut headers = Headers::new();
     headers.set(Authorization(header));
-    headers.set(ContentType(Mime(TopLevel::Application, SubLevel::WwwFormUrlEncoded, vec![])));
-
-    let req = Client::new()?
-        .post(uri)
-        .body(body.as_str())
-        .headers(headers);
+    headers.set(ContentType(
+        "application/www-form-url-encoded".parse().unwrap(),
+    ));
+    let client = Client::new();
+    let mut post = client.post(uri);
+    let req = post.body(body).headers(headers);
     let rsp = send(req)?;
     Ok(rsp)
 }
 
 /// Send request to the server
-fn send(builder: RequestBuilder) -> Result<Vec<u8>> {
+fn send(builder: &mut RequestBuilder) -> Result<Vec<u8>> {
     let mut response = builder.send()?;
-    if *response.status() != StatusCode::Ok {
-        bail!(ErrorKind::HttpStatus(*response.status()));
+    if response.status() != StatusCode::Ok {
+        return Err(HttpStatusError(response.status().into()).into());
     }
     let mut buf = vec![];
     let _ = response.read_to_end(&mut buf)?;
@@ -343,22 +343,24 @@ mod tests {
         let method = "GET";
         let uri = "http://oauthbin.com/v1/request-token";
         let encoded_uri = "http%3A%2F%2Foauthbin.com%2Fv1%2Frequest-token";
-        let query = ["oauth_consumer_key=key&",
-                     "oauth_nonce=s6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA&",
-                     "oauth_signature_method=HMAC-SHA1&",
-                     "oauth_timestamp=1471445561&",
-                     "oauth_version=1.0"]
-                .iter()
-                .cloned()
-                .collect::<String>();
-        let encoded_query = ["oauth_consumer_key%3Dkey%26",
-                             "oauth_nonce%3Ds6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA%26",
-                             "oauth_signature_method%3DHMAC-SHA1%26",
-                             "oauth_timestamp%3D1471445561%26",
-                             "oauth_version%3D1.0"]
-                .iter()
-                .cloned()
-                .collect::<String>();
+        let query = [
+            "oauth_consumer_key=key&",
+            "oauth_nonce=s6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA&",
+            "oauth_signature_method=HMAC-SHA1&",
+            "oauth_timestamp=1471445561&",
+            "oauth_version=1.0",
+        ].iter()
+            .cloned()
+            .collect::<String>();
+        let encoded_query = [
+            "oauth_consumer_key%3Dkey%26",
+            "oauth_nonce%3Ds6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA%26",
+            "oauth_signature_method%3DHMAC-SHA1%26",
+            "oauth_timestamp%3D1471445561%26",
+            "oauth_version%3D1.0",
+        ].iter()
+            .cloned()
+            .collect::<String>();
 
         assert_eq!(encode(method), "GET");
         assert_eq!(encode(uri), encoded_uri);

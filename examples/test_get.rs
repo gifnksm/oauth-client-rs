@@ -5,9 +5,8 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-#![warn(bad_style,
-        unused, unused_extern_crates, unused_import_braces,
-        unused_qualifications, unused_results)]
+#![warn(bad_style, unused, unused_extern_crates, unused_import_braces, unused_qualifications,
+       unused_results)]
 
 extern crate oauth_client as oauth;
 extern crate rand;
@@ -39,8 +38,10 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
     let resp = String::from_utf8(bytes).unwrap();
     println!("get_request_token response: {:?}", resp);
     let param = split_query(&resp);
-    Token::new(param.get("oauth_token").unwrap().to_string(),
-               param.get("oauth_token_secret").unwrap().to_string())
+    Token::new(
+        param.get("oauth_token").unwrap().to_string(),
+        param.get("oauth_token_secret").unwrap().to_string(),
+    )
 }
 
 fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
@@ -48,8 +49,10 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
     let resp = String::from_utf8(bytes).unwrap();
     println!("get_access_token response: {:?}", resp);
     let param = split_query(&resp);
-    Token::new(param.get("oauth_token").unwrap().to_string(),
-               param.get("oauth_token_secret").unwrap().to_string())
+    Token::new(
+        param.get("oauth_token").unwrap().to_string(),
+        param.get("oauth_token_secret").unwrap().to_string(),
+    )
 }
 
 fn echo(consumer: &Token, access: &Token) {
@@ -57,8 +60,10 @@ fn echo(consumer: &Token, access: &Token) {
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into(), "testFOO".into());
     for _ in 0..2 {
-        let _ = req_param.insert(rng.gen_ascii_chars().take(32).collect(),
-                                 rng.gen_ascii_chars().take(32).collect());
+        let _ = req_param.insert(
+            rng.gen_ascii_chars().take(32).collect(),
+            rng.gen_ascii_chars().take(32).collect(),
+        );
     }
     let bytes = oauth::get(api::ECHO, consumer, Some(access), Some(&req_param)).unwrap();
     let resp = String::from_utf8(bytes).unwrap();
