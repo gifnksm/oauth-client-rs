@@ -29,20 +29,20 @@
 
 extern crate base64;
 extern crate failure;
-#[macro_use] 
+#[macro_use]
 extern crate failure_derive;
 #[macro_use]
 extern crate log;
 extern crate rand;
 extern crate reqwest;
+extern crate ring;
 extern crate time;
 extern crate url;
-extern crate ring;
 
-use ring::{hmac, digest};
 use rand::Rng;
 use reqwest::{Client, RequestBuilder, StatusCode};
 use reqwest::header::{Authorization, ContentType, Headers};
+use ring::{digest, hmac};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
