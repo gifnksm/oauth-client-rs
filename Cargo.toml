@@ -1,7 +1,6 @@
 [package]
 authors = ["gifnksm <makoto.nksm+github@gmail.com>"]
 description = "OAuth client for Rust"
-documentation = "https://gifnksm.github.io/oauth-client-rs"
 license = "MIT OR Apache-2.0"
 name = "oauth-client"
 readme = "README.md"

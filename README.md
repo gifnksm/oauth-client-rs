@@ -6,7 +6,7 @@
 
 OAuth client for Rust
 
-[Documentation](https://gifnksm.github.io/oauth-client-rs)
+[Documentation](https://docs.rs/oauth-client/)
 
 ## How to use?
 
@@ -14,7 +14,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oauth-client = "0.1"
+oauth-client = "0.3"
 ```
 
 and this to your crate root:
