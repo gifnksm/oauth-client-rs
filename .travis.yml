@@ -1,5 +1,6 @@
 language: rust
 sudo: false
+dist: trusty
 
 addons:
   apt:
@@ -8,11 +9,16 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
+      - libiberty-dev
 
 rust:
   - nightly
   - beta
   - stable
+
+env:
+  global:
+    - RUSTFLAGS="-C link-dead-code"
 
 before_script:
   - cargo install cargo-kcov
