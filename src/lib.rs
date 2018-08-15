@@ -25,7 +25,7 @@
 #![warn(unused_import_braces)]
 #![warn(unused_qualifications)]
 #![warn(unused_results)]
-#![allow(unused_doc_comment)]
+#![allow(unused_doc_comments)]
 
 extern crate base64;
 #[macro_use]
@@ -42,14 +42,15 @@ extern crate ring;
 extern crate time;
 extern crate url;
 
-use rand::Rng;
-use reqwest::{Client, RequestBuilder, StatusCode};
+use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{Authorization, ContentType};
 use reqwest::mime;
+use reqwest::{Client, RequestBuilder, StatusCode};
 use ring::{digest, hmac};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
+use std::iter;
 use url::percent_encoding;
 
 /// Result type.
@@ -194,8 +195,9 @@ fn get_header(
 ) -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
-    let nonce = rand::thread_rng()
-        .gen_ascii_chars()
+    let mut rng = rand::thread_rng();
+    let nonce = iter::repeat(())
+        .map(|()| rng.sample(Alphanumeric))
         .take(32)
         .collect::<String>();
 
@@ -318,7 +320,6 @@ fn send(builder: &mut RequestBuilder) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::encode;
@@ -332,7 +333,6 @@ mod tests {
         let query = super::join_query(&map);
         assert_eq!("aaa=AAA&bbbb=BBBB", query);
     }
-
 
     #[test]
     fn test_encode() {
