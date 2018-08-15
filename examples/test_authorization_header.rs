@@ -5,8 +5,10 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-#![warn(bad_style, unused, unused_extern_crates, unused_import_braces, unused_qualifications,
-       unused_results)]
+#![warn(
+    bad_style, unused, unused_extern_crates, unused_import_braces, unused_qualifications,
+    unused_results
+)]
 
 extern crate oauth_client as oauth;
 extern crate rand;
@@ -14,8 +16,8 @@ extern crate reqwest;
 
 use oauth::Token;
 use rand::Rng;
-use reqwest::Client;
 use reqwest::header::{Authorization, Headers};
+use reqwest::Client;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;

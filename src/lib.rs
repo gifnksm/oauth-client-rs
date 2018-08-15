@@ -43,9 +43,9 @@ extern crate time;
 extern crate url;
 
 use rand::Rng;
-use reqwest::{Client, RequestBuilder, StatusCode};
 use reqwest::header::{Authorization, ContentType};
 use reqwest::mime;
+use reqwest::{Client, RequestBuilder, StatusCode};
 use ring::{digest, hmac};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -318,7 +318,6 @@ fn send(builder: &mut RequestBuilder) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::encode;
@@ -332,7 +331,6 @@ mod tests {
         let query = super::join_query(&map);
         assert_eq!("aaa=AAA&bbbb=BBBB", query);
     }
-
 
     #[test]
     fn test_encode() {
