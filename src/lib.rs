@@ -25,7 +25,7 @@
 #![warn(unused_import_braces)]
 #![warn(unused_qualifications)]
 #![warn(unused_results)]
-#![allow(unused_doc_comment)]
+#![allow(unused_doc_comments)]
 
 extern crate base64;
 #[macro_use]
