@@ -15,12 +15,13 @@ extern crate rand;
 extern crate reqwest;
 
 use oauth::Token;
-use rand::Rng;
+use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{Authorization, Headers};
 use reqwest::Client;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
+use std::iter;
 use std::str;
 
 mod api {
@@ -88,8 +89,14 @@ fn echo(consumer: &Token, access: &Token) {
     let _ = req_param.insert("testFOO".into(), "testFoo".into());
     for _ in 0..2 {
         let _ = req_param.insert(
-            rng.gen_ascii_chars().take(32).collect(),
-            rng.gen_ascii_chars().take(32).collect(),
+            iter::repeat(())
+                .map(|()| rng.sample(Alphanumeric))
+                .take(32)
+                .collect(),
+            iter::repeat(())
+                .map(|()| rng.sample(Alphanumeric))
+                .take(32)
+                .collect(),
         );
     }
     let (header, body) =

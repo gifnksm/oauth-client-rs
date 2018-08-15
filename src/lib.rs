@@ -42,7 +42,7 @@ extern crate ring;
 extern crate time;
 extern crate url;
 
-use rand::Rng;
+use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{Authorization, ContentType};
 use reqwest::mime;
 use reqwest::{Client, RequestBuilder, StatusCode};
@@ -50,6 +50,7 @@ use ring::{digest, hmac};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
+use std::iter;
 use url::percent_encoding;
 
 /// Result type.
@@ -194,8 +195,9 @@ fn get_header(
 ) -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", time::now_utc().to_timespec().sec);
-    let nonce = rand::thread_rng()
-        .gen_ascii_chars()
+    let mut rng = rand::thread_rng();
+    let nonce = iter::repeat(())
+        .map(|()| rng.sample(Alphanumeric))
         .take(32)
         .collect::<String>();
 

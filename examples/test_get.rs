@@ -14,9 +14,10 @@ extern crate oauth_client as oauth;
 extern crate rand;
 
 use oauth::Token;
-use rand::Rng;
+use rand::{distributions::Alphanumeric, Rng};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::iter;
 
 mod api {
     pub const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
@@ -63,8 +64,14 @@ fn echo(consumer: &Token, access: &Token) {
     let _ = req_param.insert("testFOO".into(), "testFOO".into());
     for _ in 0..2 {
         let _ = req_param.insert(
-            rng.gen_ascii_chars().take(32).collect(),
-            rng.gen_ascii_chars().take(32).collect(),
+            iter::repeat(())
+                .map(|()| rng.sample(Alphanumeric))
+                .take(32)
+                .collect(),
+            iter::repeat(())
+                .map(|()| rng.sample(Alphanumeric))
+                .take(32)
+                .collect(),
         );
     }
     let bytes = oauth::get(api::ECHO, consumer, Some(access), Some(&req_param)).unwrap();
