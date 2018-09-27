@@ -43,8 +43,8 @@ extern crate time;
 extern crate url;
 
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::header::{Authorization, ContentType};
-use reqwest::mime;
+use reqwest::hyper_011::header::{Authorization, ContentType};
+use reqwest::hyper_011::mime;
 use reqwest::{Client, RequestBuilder, StatusCode};
 use ring::{digest, hmac};
 use std::borrow::Cow;
@@ -275,7 +275,7 @@ pub fn get(
         format!("{}", uri)
     };
 
-    let rsp = send(CLIENT.get(&req_uri).header(Authorization(header)))?;
+    let rsp = send(CLIENT.get(&req_uri).header_011(Authorization(header)))?;
     Ok(rsp)
 }
 
@@ -303,16 +303,16 @@ pub fn post(
         CLIENT
             .post(uri)
             .body(body)
-            .header(Authorization(header))
-            .header(ContentType(mime::APPLICATION_WWW_FORM_URLENCODED)),
+            .header_011(Authorization(header))
+            .header_011(ContentType(mime::APPLICATION_WWW_FORM_URLENCODED)),
     )?;
     Ok(rsp)
 }
 
 /// Send request to the server
-fn send(builder: &mut RequestBuilder) -> Result<Vec<u8>> {
+fn send(builder: RequestBuilder) -> Result<Vec<u8>> {
     let mut response = builder.send()?;
-    if response.status() != StatusCode::Ok {
+    if response.status() != StatusCode::OK {
         bail!(HttpStatusError(response.status().into()));
     }
     let mut buf = vec![];

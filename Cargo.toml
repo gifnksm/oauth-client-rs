@@ -15,6 +15,6 @@ lazy_static = "1.0"
 log = "0.4"
 rand = "0.5"
 ring = "0.13"
-reqwest = "0.8"
+reqwest = { version = "0.9", features = ["hyper-011"] }
 time = "0.1"
 url = "1.6.0"
