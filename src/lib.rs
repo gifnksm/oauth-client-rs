@@ -43,8 +43,7 @@ extern crate time;
 extern crate url;
 
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::header::{Authorization, ContentType};
-use reqwest::mime;
+use reqwest::header::{HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::{Client, RequestBuilder, StatusCode};
 use ring::{digest, hmac};
 use std::borrow::Cow;
@@ -275,7 +274,7 @@ pub fn get(
         format!("{}", uri)
     };
 
-    let rsp = send(CLIENT.get(&req_uri).header(Authorization(header)))?;
+    let rsp = send(CLIENT.get(&req_uri).header(AUTHORIZATION, header))?;
     Ok(rsp)
 }
 
@@ -303,16 +302,19 @@ pub fn post(
         CLIENT
             .post(uri)
             .body(body)
-            .header(Authorization(header))
-            .header(ContentType(mime::APPLICATION_WWW_FORM_URLENCODED)),
+            .header(AUTHORIZATION, header)
+            .header(
+                CONTENT_TYPE,
+                HeaderValue::from_static("application/x-www-form-urlencoded"),
+            ),
     )?;
     Ok(rsp)
 }
 
 /// Send request to the server
-fn send(builder: &mut RequestBuilder) -> Result<Vec<u8>> {
+fn send(builder: RequestBuilder) -> Result<Vec<u8>> {
     let mut response = builder.send()?;
-    if response.status() != StatusCode::Ok {
+    if response.status() != StatusCode::OK {
         bail!(HttpStatusError(response.status().into()));
     }
     let mut buf = vec![];
@@ -345,7 +347,8 @@ mod tests {
             "oauth_signature_method=HMAC-SHA1&",
             "oauth_timestamp=1471445561&",
             "oauth_version=1.0",
-        ].iter()
+        ]
+            .iter()
             .cloned()
             .collect::<String>();
         let encoded_query = [
@@ -354,7 +357,8 @@ mod tests {
             "oauth_signature_method%3DHMAC-SHA1%26",
             "oauth_timestamp%3D1471445561%26",
             "oauth_version%3D1.0",
-        ].iter()
+        ]
+            .iter()
             .cloned()
             .collect::<String>();
 
