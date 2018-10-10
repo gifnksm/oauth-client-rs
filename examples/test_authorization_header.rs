@@ -6,23 +6,30 @@
 // copied, modified, or distributed except according to those terms.
 
 #![warn(
-    bad_style, unused, unused_extern_crates, unused_import_braces, unused_qualifications,
+    bad_style,
+    unused,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
     unused_results
 )]
 
+extern crate futures;
+extern crate hyper;
 extern crate oauth_client as oauth;
 extern crate rand;
-extern crate reqwest;
+extern crate tokio_core;
 
+use futures::{Future, Stream};
+use hyper::header::AUTHORIZATION;
+use hyper::{Body, Client, Request};
 use oauth::Token;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::header::{Authorization, Headers};
-use reqwest::Client;
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::Read;
 use std::iter;
 use std::str;
+use tokio_core::reactor::Core;
 
 mod api {
     pub const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
@@ -41,49 +48,62 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
     param
 }
 
-fn get_request_token(consumer: &Token) -> Token<'static> {
+fn get_request_token(consumer: &Token) -> impl Future<Item = Token<'static>, Error = ()> {
     let (header, _body) =
         oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
     let handle = Client::new();
-    let mut headers = Headers::new();
-    headers.set(Authorization(header));
-    let mut response = handle
-        .get(api::REQUEST_TOKEN)
-        .headers(headers)
-        .send()
+    let req = Request::get(api::REQUEST_TOKEN)
+        .header(AUTHORIZATION, header)
+        .body(Body::empty())
         .unwrap();
-    let mut resp = String::new();
-    let _ = response.read_to_string(&mut resp).unwrap();
-    println!("get_request_token response: {:?}", resp);
-    let param = split_query(resp.as_ref());
-    Token::new(
-        param.get("oauth_token").unwrap().to_string(),
-        param.get("oauth_token_secret").unwrap().to_string(),
-    )
+
+    handle
+        .request(req)
+        .map_err(|_| ())
+        .and_then(|resp| resp.into_body().concat2().map_err(|_| ()))
+        .map(|chunks| {
+            let v = chunks.to_vec();
+            String::from_utf8_lossy(&v).to_string()
+        }).map(|resp| {
+            println!("get_request_token response: {:?}", resp);
+            let param = split_query(resp.as_ref());
+            Token::new(
+                param.get("oauth_token").unwrap().to_string(),
+                param.get("oauth_token_secret").unwrap().to_string(),
+            )
+        })
 }
 
-fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
+fn get_access_token(
+    consumer: &Token,
+    request: &Token,
+) -> impl Future<Item = Token<'static>, Error = ()> {
     let (header, _body) =
         oauth::authorization_header("GET", api::ACCESS_TOKEN, consumer, Some(request), None);
     let handle = Client::new();
-    let mut headers = Headers::new();
-    headers.set(Authorization(header));
-    let mut response = handle
-        .get(api::ACCESS_TOKEN)
-        .headers(headers)
-        .send()
+    let req = Request::get(api::REQUEST_TOKEN)
+        .header(AUTHORIZATION, header)
+        .body(Body::empty())
         .unwrap();
-    let mut resp = String::new();
-    let _ = response.read_to_string(&mut resp).unwrap();
-    println!("get_access_token response: {:?}", resp);
-    let param = split_query(resp.as_ref());
-    Token::new(
-        param.get("oauth_token").unwrap().to_string(),
-        param.get("oauth_token_secret").unwrap().to_string(),
-    )
+
+    handle
+        .request(req)
+        .map_err(|_| ())
+        .and_then(|resp| resp.into_body().concat2().map_err(|_| ()))
+        .map(|chunks| {
+            let v = chunks.to_vec();
+            String::from_utf8_lossy(&v).to_string()
+        }).map(|resp| {
+            println!("get_access_token response: {:?}", resp);
+            let param = split_query(resp.as_ref());
+            Token::new(
+                param.get("oauth_token").unwrap().to_string(),
+                param.get("oauth_token_secret").unwrap().to_string(),
+            )
+        })
 }
 
-fn echo(consumer: &Token, access: &Token) {
+fn echo(consumer: &Token, access: &Token) -> impl Future<Item = (), Error = ()> {
     let mut rng = rand::thread_rng();
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into(), "testFoo".into());
@@ -101,35 +121,39 @@ fn echo(consumer: &Token, access: &Token) {
     }
     let (header, body) =
         oauth::authorization_header("POST", api::ECHO, consumer, Some(access), Some(&req_param));
-
-    let mut headers = Headers::new();
-    headers.set(Authorization(header));
-
-    let mut response = Client::new()
-        .post(api::ECHO)
-        .headers(headers)
-        .body(body.clone())
-        .send()
+    let req = Request::get(api::REQUEST_TOKEN)
+        .header(AUTHORIZATION, header)
+        .body(Body::empty())
         .unwrap();
 
-    let mut resp = String::new();
-    let _ = response.read_to_string(&mut resp).unwrap();
-    println!("echo response: {:?}", resp);
-    let resp_body: &str = resp.as_ref();
-    assert_eq!(body, resp_body);
+    Client::new()
+        .request(req)
+        .map_err(|_| ())
+        .and_then(|resp| resp.into_body().concat2().map_err(|_| ()))
+        .map(|chunks| {
+            let v = chunks.to_vec();
+            String::from_utf8_lossy(&v).to_string()
+        }).map(move |resp| {
+            let body = body.clone();
+            println!("echo response: {:?}", resp);
+            let resp_body: &str = resp.as_ref();
+            assert_eq!(body, resp_body);
+        })
 }
 
 fn main() {
+    let mut core = Core::new().unwrap();
+
     let consumer = Token::new("key", "secret");
     println!("consumer: {:?}", consumer);
 
-    let request = get_request_token(&consumer);
+    let request = core.run(get_request_token(&consumer)).unwrap();
     println!("request: {:?}", request);
 
-    let access = get_access_token(&consumer, &request);
+    let access = core.run(get_access_token(&consumer, &request)).unwrap();
     println!("access: {:?}", access);
 
-    echo(&consumer, &access);
+    core.run(echo(&consumer, &access)).unwrap();
 
     println!("OK");
 }

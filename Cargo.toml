@@ -6,6 +6,7 @@ name = "oauth-client"
 readme = "README.md"
 repository = "https://github.com/gifnksm/oauth-client-rs"
 version = "0.4.0"
+autoexamples = true
 
 [dependencies]
 base64 = "0.9"
@@ -15,6 +16,11 @@ lazy_static = "1.0"
 log = "0.4"
 rand = "0.5"
 ring = "0.13"
-reqwest = "0.8"
 time = "0.1"
 url = "1.6.0"
+hyper = "0.12"
+hyper-tls = "0.3"
+futures = "0.1"
+
+[dev-dependencies]
+tokio-core = "0.1"

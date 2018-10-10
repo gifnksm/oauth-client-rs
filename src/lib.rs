@@ -13,10 +13,15 @@
 //!
 //! Send request for request token.
 //!
-//! ```
+//! ```rust
+//! # extern crate oauth_client; extern crate tokio_core;
+//! # fn main() {
+//! # let mut core = tokio_core::reactor::Core::new().unwrap();
 //! const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
 //! let consumer = oauth_client::Token::new("key", "secret");
-//! let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
+//! let bytes_future = oauth_client::get(REQUEST_TOKEN, &consumer, None, None);
+//! let bytes = core.run(bytes_future).unwrap();
+//! # }
 //! ```
 #![warn(bad_style)]
 #![warn(missing_docs)]
@@ -28,7 +33,6 @@
 #![allow(unused_doc_comments)]
 
 extern crate base64;
-#[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
@@ -36,20 +40,24 @@ extern crate failure_derive;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+extern crate futures;
+extern crate hyper;
+extern crate hyper_tls;
 extern crate rand;
-extern crate reqwest;
 extern crate ring;
 extern crate time;
 extern crate url;
 
+use futures::future::{result, Either};
+use futures::{Future, Stream};
+use hyper::client::HttpConnector;
+use hyper::header::{HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use hyper::{Body, Client, Request, StatusCode};
+use hyper_tls::HttpsConnector;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::header::{Authorization, ContentType};
-use reqwest::mime;
-use reqwest::{Client, RequestBuilder, StatusCode};
 use ring::{digest, hmac};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::Read;
 use std::iter;
 use url::percent_encoding;
 
@@ -62,7 +70,11 @@ pub type Result<T> = std::result::Result<T, failure::Error>;
 pub struct HttpStatusError(pub u16);
 
 lazy_static! {
-    static ref CLIENT: Client = Client::new();
+    static ref CLIENT: Client<HttpsConnector<HttpConnector>, Body> = {
+        let con = HttpsConnector::new(4).expect("TLS initialization failed");
+        let client = Client::builder().build(con);
+        client
+    };
 }
 
 /// Token structure for the OAuth
@@ -256,18 +268,23 @@ pub fn authorization_header(
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust
+/// # extern crate oauth_client; extern crate tokio_core;
+/// # fn main() {
+/// # let mut core = tokio_core::reactor::Core::new().unwrap();
 /// let REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
-/// let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
+/// let bytes_future = oauth_client::get(REQUEST_TOKEN, &consumer, None, None);
+/// let bytes = core.run(bytes_future).unwrap();
 /// let resp = String::from_utf8(bytes).unwrap();
+/// # }
 /// ```
 pub fn get(
     uri: &str,
     consumer: &Token,
     token: Option<&Token>,
     other_param: Option<&ParamList>,
-) -> Result<Vec<u8>> {
+) -> impl Future<Item = Vec<u8>, Error = failure::Error> {
     let (header, body) = get_header("GET", uri, consumer, token, other_param);
     let req_uri = if body.len() > 0 {
         format!("{}?{}", uri, body)
@@ -275,8 +292,12 @@ pub fn get(
         format!("{}", uri)
     };
 
-    let rsp = send(CLIENT.get(&req_uri).header(Authorization(header)))?;
-    Ok(rsp)
+    result(
+        Request::get(req_uri)
+            .header(AUTHORIZATION, header)
+            .body(Body::empty())
+            .map_err(Into::into),
+    ).and_then(|req| send(req))
 }
 
 /// Send authorized POST request to the specified URL.
@@ -284,40 +305,54 @@ pub fn get(
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust,no_run
+/// # extern crate oauth_client; extern crate tokio_core;
+/// # fn main() {
+/// # let mut core = tokio_core::reactor::Core::new().unwrap();
 /// # let request = oauth_client::Token::new("key", "secret");
-/// let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
-/// let bytes = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
+/// let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
+/// let bytes_future = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None);
+/// let bytes = core.run(bytes_future).unwrap();
 /// let resp = String::from_utf8(bytes).unwrap();
+/// # }
 /// ```
 pub fn post(
     uri: &str,
     consumer: &Token,
     token: Option<&Token>,
     other_param: Option<&ParamList>,
-) -> Result<Vec<u8>> {
+) -> impl Future<Item = Vec<u8>, Error = failure::Error> {
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
 
-    let rsp = send(
-        CLIENT
-            .post(uri)
-            .body(body)
-            .header(Authorization(header))
-            .header(ContentType(mime::APPLICATION_WWW_FORM_URLENCODED)),
-    )?;
-    Ok(rsp)
+    result(
+        Request::post(uri)
+            .header(AUTHORIZATION, header)
+            .header(
+                CONTENT_TYPE,
+                HeaderValue::from_static("application/x-www-form-urlencoded"),
+            ).body(body.into())
+            .map_err(Into::into),
+    ).and_then(|req| send(req))
 }
 
 /// Send request to the server
-fn send(builder: &mut RequestBuilder) -> Result<Vec<u8>> {
-    let mut response = builder.send()?;
-    if response.status() != StatusCode::Ok {
-        bail!(HttpStatusError(response.status().into()));
-    }
-    let mut buf = vec![];
-    let _ = response.read_to_end(&mut buf)?;
-    Ok(buf)
+fn send(req: Request<Body>) -> impl Future<Item = Vec<u8>, Error = failure::Error> {
+    CLIENT
+        .request(req)
+        .map_err(Into::into)
+        .and_then(|resp| {
+            let status = resp.status();
+            if status == StatusCode::OK {
+                let chunks = resp.into_body().concat2().map_err(Into::into);
+
+                Either::A(chunks)
+            } else {
+                let err = futures::future::err(HttpStatusError(status.into()).into());
+
+                Either::B(err)
+            }
+        }).map(|chunks| chunks.to_vec())
 }
 
 #[cfg(test)]
@@ -345,7 +380,8 @@ mod tests {
             "oauth_signature_method=HMAC-SHA1&",
             "oauth_timestamp=1471445561&",
             "oauth_version=1.0",
-        ].iter()
+        ]
+            .iter()
             .cloned()
             .collect::<String>();
         let encoded_query = [
@@ -354,7 +390,8 @@ mod tests {
             "oauth_signature_method%3DHMAC-SHA1%26",
             "oauth_timestamp%3D1471445561%26",
             "oauth_version%3D1.0",
-        ].iter()
+        ]
+            .iter()
             .cloned()
             .collect::<String>();
 
