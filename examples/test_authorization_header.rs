@@ -16,7 +16,6 @@ extern crate reqwest;
 
 use oauth::Token;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::header::{Authorization, Headers};
 use reqwest::Client;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -45,11 +44,9 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
     let (header, _body) =
         oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
     let handle = Client::new();
-    let mut headers = Headers::new();
-    headers.set(Authorization(header));
     let mut response = handle
         .get(api::REQUEST_TOKEN)
-        .headers(headers)
+        .header("Authorization", header)
         .send()
         .unwrap();
     let mut resp = String::new();
@@ -66,11 +63,9 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
     let (header, _body) =
         oauth::authorization_header("GET", api::ACCESS_TOKEN, consumer, Some(request), None);
     let handle = Client::new();
-    let mut headers = Headers::new();
-    headers.set(Authorization(header));
     let mut response = handle
         .get(api::ACCESS_TOKEN)
-        .headers(headers)
+        .header("Authorization", header)
         .send()
         .unwrap();
     let mut resp = String::new();
@@ -102,12 +97,9 @@ fn echo(consumer: &Token, access: &Token) {
     let (header, body) =
         oauth::authorization_header("POST", api::ECHO, consumer, Some(access), Some(&req_param));
 
-    let mut headers = Headers::new();
-    headers.set(Authorization(header));
-
     let mut response = Client::new()
         .post(api::ECHO)
-        .headers(headers)
+        .header("Authorization", header)
         .body(body.clone())
         .send()
         .unwrap();
