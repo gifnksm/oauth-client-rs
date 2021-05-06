@@ -188,6 +188,7 @@ fn get_header(
     let mut rng = rand::thread_rng();
     let nonce = iter::repeat(())
         .map(|()| rng.sample(Alphanumeric))
+        .map(char::from)
         .take(32)
         .collect::<String>();
 

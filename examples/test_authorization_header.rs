@@ -95,10 +95,12 @@ fn echo(consumer: &Token, access: &Token) {
         let _ = req_param.insert(
             iter::repeat(())
                 .map(|()| rng.sample(Alphanumeric))
+                .map(char::from)
                 .take(32)
                 .collect(),
             iter::repeat(())
                 .map(|()| rng.sample(Alphanumeric))
+                .map(char::from)
                 .take(32)
                 .collect(),
         );
