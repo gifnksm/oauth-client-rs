@@ -6,23 +6,24 @@
 // copied, modified, or distributed except according to those terms.
 
 #![warn(
-    bad_style, unused, unused_extern_crates, unused_import_braces, unused_qualifications,
+    bad_style,
+    unused,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
     unused_results
 )]
 
-extern crate oauth_client as oauth;
-extern crate rand;
-
-use oauth::Token;
+use oauth_client::{self as oauth, Token};
 use rand::{distributions::Alphanumeric, Rng};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::iter;
 
 mod api {
-    pub const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
-    pub const ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
-    pub const ECHO: &'static str = "http://oauthbin.com/v1/echo";
+    pub const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
+    pub const ACCESS_TOKEN: &str = "http://oauthbin.com/v1/access-token";
+    pub const ECHO: &str = "http://oauthbin.com/v1/echo";
 }
 
 fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
@@ -36,7 +37,7 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
     param
 }
 
-fn get_request_token(consumer: &Token) -> Token<'static> {
+fn get_request_token(consumer: &Token<'_>) -> Token<'static> {
     let bytes = oauth::get(api::REQUEST_TOKEN, consumer, None, None).unwrap();
     let resp = String::from_utf8(bytes).unwrap();
     println!("get_request_token response: {:?}", resp);
@@ -47,7 +48,7 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
     )
 }
 
-fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
+fn get_access_token(consumer: &Token<'_>, request: &Token<'_>) -> Token<'static> {
     let bytes = oauth::get(api::ACCESS_TOKEN, consumer, Some(request), None).unwrap();
     let resp = String::from_utf8(bytes).unwrap();
     println!("get_access_token response: {:?}", resp);
@@ -58,7 +59,7 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
     )
 }
 
-fn echo(consumer: &Token, access: &Token) {
+fn echo(consumer: &Token<'_>, access: &Token<'_>) {
     let mut rng = rand::thread_rng();
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into(), "testFOO".into());
@@ -66,10 +67,12 @@ fn echo(consumer: &Token, access: &Token) {
         let _ = req_param.insert(
             iter::repeat(())
                 .map(|()| rng.sample(Alphanumeric))
+                .map(char::from)
                 .take(32)
                 .collect(),
             iter::repeat(())
                 .map(|()| rng.sample(Alphanumeric))
+                .map(char::from)
                 .take(32)
                 .collect(),
         );

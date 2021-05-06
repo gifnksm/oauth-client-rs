@@ -25,6 +25,7 @@ before_script:
 
 script:
   - |
+      cargo fmt -- --check &&
       cargo build &&
       cargo test &&
       cargo bench &&
