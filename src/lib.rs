@@ -27,7 +27,7 @@
 #![warn(unused_results)]
 #![allow(unused_doc_comments)]
 
-extern crate base64;
+use base64;
 #[macro_use]
 extern crate failure;
 #[macro_use]
@@ -36,11 +36,8 @@ extern crate failure_derive;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate percent_encoding;
-extern crate rand;
-extern crate reqwest;
-extern crate ring;
-extern crate time;
+use percent_encoding;
+use rand;
 
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::{Client, RequestBuilder};
@@ -154,7 +151,7 @@ fn signature(
 }
 
 /// Constuct plain-text header
-fn header(param: &ParamList) -> String {
+fn header(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
         .filter(|&(k, _)| k.starts_with("oauth_"))
@@ -165,7 +162,7 @@ fn header(param: &ParamList) -> String {
 }
 
 /// Construct plain-text body from 'ParamList'
-fn body(param: &ParamList) -> String {
+fn body(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
         .filter(|&(k, _)| !k.starts_with("oauth_"))
@@ -179,9 +176,9 @@ fn body(param: &ParamList) -> String {
 fn get_header(
     method: &str,
     uri: &str,
-    consumer: &Token,
-    token: Option<&Token>,
-    other_param: Option<&ParamList>,
+    consumer: &Token<'_>,
+    token: Option<&Token<'_>>,
+    other_param: Option<&ParamList<'_>>,
 ) -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", OffsetDateTime::now_utc().unix_timestamp());
@@ -235,9 +232,9 @@ fn get_header(
 pub fn authorization_header(
     method: &str,
     uri: &str,
-    consumer: &Token,
-    token: Option<&Token>,
-    other_param: Option<&ParamList>,
+    consumer: &Token<'_>,
+    token: Option<&Token<'_>>,
+    other_param: Option<&ParamList<'_>>,
 ) -> (String, String) {
     get_header(method, uri, consumer, token, other_param)
 }
@@ -255,9 +252,9 @@ pub fn authorization_header(
 /// ```
 pub fn get(
     uri: &str,
-    consumer: &Token,
-    token: Option<&Token>,
-    other_param: Option<&ParamList>,
+    consumer: &Token<'_>,
+    token: Option<&Token<'_>>,
+    other_param: Option<&ParamList<'_>>,
 ) -> Result<Vec<u8>> {
     let (header, body) = get_header("GET", uri, consumer, token, other_param);
     let req_uri = if body.len() > 0 {
@@ -284,9 +281,9 @@ pub fn get(
 /// ```
 pub fn post(
     uri: &str,
-    consumer: &Token,
-    token: Option<&Token>,
-    other_param: Option<&ParamList>,
+    consumer: &Token<'_>,
+    token: Option<&Token<'_>>,
+    other_param: Option<&ParamList<'_>>,
 ) -> Result<Vec<u8>> {
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
 

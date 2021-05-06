@@ -15,8 +15,7 @@
 )]
 
 extern crate oauth_client as oauth;
-extern crate rand;
-extern crate reqwest;
+use rand;
 
 use crate::oauth::Token;
 use rand::{distributions::Alphanumeric, Rng};
@@ -45,7 +44,7 @@ fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
     param
 }
 
-fn get_request_token(consumer: &Token) -> Token<'static> {
+fn get_request_token(consumer: &Token<'_>) -> Token<'static> {
     let (header, _body) =
         oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
     let handle = Client::new();
@@ -66,7 +65,7 @@ fn get_request_token(consumer: &Token) -> Token<'static> {
     )
 }
 
-fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
+fn get_access_token(consumer: &Token<'_>, request: &Token<'_>) -> Token<'static> {
     let (header, _body) =
         oauth::authorization_header("GET", api::ACCESS_TOKEN, consumer, Some(request), None);
     let handle = Client::new();
@@ -87,7 +86,7 @@ fn get_access_token(consumer: &Token, request: &Token) -> Token<'static> {
     )
 }
 
-fn echo(consumer: &Token, access: &Token) {
+fn echo(consumer: &Token<'_>, access: &Token<'_>) {
     let mut rng = rand::thread_rng();
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into(), "testFoo".into());
