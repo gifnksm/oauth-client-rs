@@ -46,7 +46,7 @@ use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::{Client, RequestBuilder};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use reqwest::StatusCode;
-use ring::{digest, hmac};
+use ring::hmac;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
@@ -148,7 +148,7 @@ fn signature(
     );
     debug!("Signature base string: {}", base);
     debug!("Authorization header: Authorization: {}", base);
-    let signing_key = hmac::SigningKey::new(&digest::SHA1, key.as_bytes());
+    let signing_key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, key.as_bytes());
     let signature = hmac::sign(&signing_key, base.as_bytes());
     base64::encode(signature.as_ref())
 }
