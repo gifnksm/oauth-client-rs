@@ -6,7 +6,11 @@
 // copied, modified, or distributed except according to those terms.
 
 #![warn(
-    bad_style, unused, unused_extern_crates, unused_import_braces, unused_qualifications,
+    bad_style,
+    unused,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
     unused_results
 )]
 

@@ -43,8 +43,8 @@ extern crate time;
 extern crate url;
 
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use reqwest::blocking::{Client, RequestBuilder};
+use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use reqwest::StatusCode;
 use ring::{digest, hmac};
 use std::borrow::Cow;
@@ -304,7 +304,7 @@ pub fn post(
             .post(uri)
             .body(body)
             .header(AUTHORIZATION, header)
-            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded"),
     )?;
     Ok(rsp)
 }
@@ -345,18 +345,20 @@ mod tests {
             "oauth_signature_method=HMAC-SHA1&",
             "oauth_timestamp=1471445561&",
             "oauth_version=1.0",
-        ].iter()
-            .cloned()
-            .collect::<String>();
+        ]
+        .iter()
+        .cloned()
+        .collect::<String>();
         let encoded_query = [
             "oauth_consumer_key%3Dkey%26",
             "oauth_nonce%3Ds6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA%26",
             "oauth_signature_method%3DHMAC-SHA1%26",
             "oauth_timestamp%3D1471445561%26",
             "oauth_version%3D1.0",
-        ].iter()
-            .cloned()
-            .collect::<String>();
+        ]
+        .iter()
+        .cloned()
+        .collect::<String>();
 
         assert_eq!(encode(method), "GET");
         assert_eq!(encode(uri), encoded_uri);

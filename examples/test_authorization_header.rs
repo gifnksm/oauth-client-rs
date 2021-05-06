@@ -6,7 +6,11 @@
 // copied, modified, or distributed except according to those terms.
 
 #![warn(
-    bad_style, unused, unused_extern_crates, unused_import_braces, unused_qualifications,
+    bad_style,
+    unused,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
     unused_results
 )]
 
@@ -16,8 +20,8 @@ extern crate reqwest;
 
 use oauth::Token;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use reqwest::blocking::Client;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
