@@ -49,7 +49,7 @@ fn get_request_token(consumer: &Token<'_>) -> Token<'static> {
         oauth::authorization_header("GET", api::REQUEST_TOKEN, consumer, None, None);
     let handle = Client::new();
     let mut headers = HeaderMap::new();
-    headers.insert(AUTHORIZATION, HeaderValue::from_str(&header).unwrap());
+    let _ = headers.insert(AUTHORIZATION, HeaderValue::from_str(&header).unwrap());
     let mut response = handle
         .get(api::REQUEST_TOKEN)
         .headers(headers)
@@ -70,7 +70,7 @@ fn get_access_token(consumer: &Token<'_>, request: &Token<'_>) -> Token<'static>
         oauth::authorization_header("GET", api::ACCESS_TOKEN, consumer, Some(request), None);
     let handle = Client::new();
     let mut headers = HeaderMap::new();
-    headers.insert(AUTHORIZATION, HeaderValue::from_str(&header).unwrap());
+    let _ = headers.insert(AUTHORIZATION, HeaderValue::from_str(&header).unwrap());
     let mut response = handle
         .get(api::ACCESS_TOKEN)
         .headers(headers)
@@ -108,7 +108,7 @@ fn echo(consumer: &Token<'_>, access: &Token<'_>) {
         oauth::authorization_header("POST", api::ECHO, consumer, Some(access), Some(&req_param));
 
     let mut headers = HeaderMap::new();
-    headers.insert(AUTHORIZATION, HeaderValue::from_str(&header).unwrap());
+    let _ = headers.insert(AUTHORIZATION, HeaderValue::from_str(&header).unwrap());
 
     let mut response = Client::new()
         .post(api::ECHO)
