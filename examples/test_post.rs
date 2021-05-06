@@ -17,7 +17,7 @@
 extern crate oauth_client as oauth;
 extern crate rand;
 
-use oauth::Token;
+use crate::oauth::Token;
 use rand::{distributions::Alphanumeric, Rng};
 use std::borrow::Cow;
 use std::collections::HashMap;
