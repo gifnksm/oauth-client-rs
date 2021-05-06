@@ -27,15 +27,9 @@
 #![warn(unused_results)]
 #![allow(unused_doc_comments)]
 
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate log;
-
+use failure::{bail, Fail};
+use lazy_static::lazy_static;
+use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::{Client, RequestBuilder};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};

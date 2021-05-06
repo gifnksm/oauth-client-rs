@@ -17,12 +17,6 @@ Add this to your `Cargo.toml`:
 oauth-client = "0.3"
 ```
 
-and this to your crate root:
-
-```rust
-extern crate oauth_client;
-```
-
 See [examples](./examples).
 
 ## License

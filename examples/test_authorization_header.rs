@@ -14,9 +14,7 @@
     unused_results
 )]
 
-extern crate oauth_client as oauth;
-
-use crate::oauth::Token;
+use oauth_client::{self as oauth, Token};
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
