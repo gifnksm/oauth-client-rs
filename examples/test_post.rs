@@ -15,7 +15,6 @@
 )]
 
 extern crate oauth_client as oauth;
-use rand;
 
 use crate::oauth::Token;
 use rand::{distributions::Alphanumeric, Rng};
@@ -24,9 +23,9 @@ use std::collections::HashMap;
 use std::iter;
 
 mod api {
-    pub const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
-    pub const ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
-    pub const ECHO: &'static str = "http://oauthbin.com/v1/echo";
+    pub const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
+    pub const ACCESS_TOKEN: &str = "http://oauthbin.com/v1/access-token";
+    pub const ECHO: &str = "http://oauthbin.com/v1/echo";
 }
 
 fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {

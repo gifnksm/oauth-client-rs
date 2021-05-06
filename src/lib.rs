@@ -27,7 +27,6 @@
 #![warn(unused_results)]
 #![allow(unused_doc_comments)]
 
-use base64;
 #[macro_use]
 extern crate failure;
 #[macro_use]
@@ -36,8 +35,6 @@ extern crate failure_derive;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-use percent_encoding;
-use rand;
 
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::{Client, RequestBuilder};
@@ -102,7 +99,7 @@ where
     param.insert(key.into(), value.into())
 }
 
-fn join_query<'a>(param: &ParamList<'a>) -> String {
+fn join_query(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
         .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
@@ -169,7 +166,7 @@ fn body(param: &ParamList<'_>) -> String {
         .map(|(k, v)| format!("{}={}", k, encode(&v)))
         .collect::<Vec<_>>();
     pairs.sort();
-    format!("{}", pairs.join("&"))
+    pairs.join("&")
 }
 
 /// Create header and body
@@ -257,10 +254,10 @@ pub fn get(
     other_param: Option<&ParamList<'_>>,
 ) -> Result<Vec<u8>> {
     let (header, body) = get_header("GET", uri, consumer, token, other_param);
-    let req_uri = if body.len() > 0 {
+    let req_uri = if !body.is_empty() {
         format!("{}?{}", uri, body)
     } else {
-        format!("{}", uri)
+        uri.to_string()
     };
 
     let rsp = send(CLIENT.get(&req_uri).header(AUTHORIZATION, header))?;
