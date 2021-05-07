@@ -7,7 +7,7 @@
 
 //! OAuth 1.0 client library for Rust.
 //!
-//! [Repository](https://github.com/charlag/oauth-client-rs)
+//! [Repository](https://github.com/gifnksm/oauth-client-rs)
 //!
 //! # Examples
 //!
