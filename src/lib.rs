@@ -14,7 +14,7 @@
 //! Send request for request token.
 //!
 //! ```
-//! const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+//! const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 //! let consumer = oauth_client::Token::new("key", "secret");
 //! let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 //! ```
@@ -27,27 +27,44 @@
 #![warn(unused_results)]
 #![allow(unused_doc_comments)]
 
-use failure::{bail, Fail};
 use lazy_static::lazy_static;
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::blocking::{Client, RequestBuilder};
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
-use reqwest::StatusCode;
+use reqwest::{
+    blocking::{Client, RequestBuilder},
+    header::{AUTHORIZATION, CONTENT_TYPE},
+    StatusCode,
+};
 use ring::hmac;
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::io::Read;
-use std::iter;
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    io::{self, Read},
+    iter,
+};
+use thiserror::Error;
 use time::OffsetDateTime;
 
 /// Result type.
-pub type Result<T> = std::result::Result<T, failure::Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
-/// An error happening due to a HTTP status error.
-#[derive(Debug, Fail, Clone, Copy)]
-#[fail(display = "HTTP status error code {}", _0)]
-pub struct HttpStatusError(pub u16);
+/// Re-exporting `reqwest` crate.
+pub use reqwest;
+
+/// Error type.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum Error {
+    /// An error happening due to a HTTP status error.
+    #[error("HTTP status error code: {0}")]
+    HttpStatus(StatusCode),
+    /// An error happening due to a IO error.
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+    /// An error happening due to a reqwest error.
+    #[error("reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
+}
 
 lazy_static! {
     static ref CLIENT: Client = Client::new();
@@ -141,7 +158,7 @@ fn signature(
     base64::encode(signature.as_ref())
 }
 
-/// Constuct plain-text header
+/// Construct plain-text header
 fn header(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
@@ -215,7 +232,7 @@ fn get_header(
 /// ```
 /// # extern crate oauth_client;
 /// # fn main() {
-/// const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+/// const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
 /// let header = oauth_client::authorization_header("GET", REQUEST_TOKEN, &consumer, None, None);
 /// # }
@@ -236,7 +253,7 @@ pub fn authorization_header(
 /// # Examples
 ///
 /// ```
-/// let REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+/// let REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
 /// let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 /// let resp = String::from_utf8(bytes).unwrap();
@@ -292,7 +309,7 @@ pub fn post(
 fn send(builder: RequestBuilder) -> Result<Vec<u8>> {
     let mut response = builder.send()?;
     if response.status() != StatusCode::OK {
-        bail!(HttpStatusError(response.status().into()));
+        return Err(Error::HttpStatus(response.status()));
     }
     let mut buf = vec![];
     let _ = response.read_to_end(&mut buf)?;
