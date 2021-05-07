@@ -30,7 +30,7 @@ mod api {
     pub const ECHO: &str = "http://oauthbin.com/v1/echo";
 }
 
-fn split_query<'a>(query: &'a str) -> HashMap<Cow<'a, str>, Cow<'a, str>> {
+fn split_query(query: &'_ str) -> HashMap<Cow<'_, str>, Cow<'_, str>> {
     let mut param = HashMap::new();
     for q in query.split('&') {
         let mut s = q.splitn(2, '=');
