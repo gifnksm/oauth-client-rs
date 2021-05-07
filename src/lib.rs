@@ -14,7 +14,7 @@
 //! Send request for request token.
 //!
 //! ```
-//! const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+//! const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 //! let consumer = oauth_client::Token::new("key", "secret");
 //! let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 //! ```
@@ -215,7 +215,7 @@ fn get_header(
 /// ```
 /// # extern crate oauth_client;
 /// # fn main() {
-/// const REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+/// const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
 /// let header = oauth_client::authorization_header("GET", REQUEST_TOKEN, &consumer, None, None);
 /// # }
@@ -236,7 +236,7 @@ pub fn authorization_header(
 /// # Examples
 ///
 /// ```
-/// let REQUEST_TOKEN: &'static str = "http://oauthbin.com/v1/request-token";
+/// let REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
 /// let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 /// let resp = String::from_utf8(bytes).unwrap();
