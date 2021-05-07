@@ -1,43 +1,28 @@
 language: rust
 sudo: required
-dist: trusty
-
-cache: cargo
-
-addons:
-  apt:
-    packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
-      - binutils-dev
-      - libiberty-dev
+dist: bionic
 
 rust:
   - nightly
   - beta
   - stable
+cache: cargo
+matrix:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
 
 before_script:
-  - cargo install cargo-update || echo "cargo-update already installed"
-  - cargo install cargo-travis || echo "cargo-travis already installed"
-  - cargo install-update -a # update outdated cached binaries
+  - rustup component add rustfmt
+  - rustup component add clippy
 
 script:
-  - |
-      cargo fmt -- --check &&
-      cargo build &&
-      cargo test &&
-      cargo bench &&
-      cargo run --example test_authorization_header &&
-      cargo run --example test_get &&
-      cargo run --example test_post &&
-      cargo doc
+  - cargo fmt -- --check
+  - cargo clippy
+  - cargo build
+  - cargo test --verbose
+  # OAuth server is not available, so comment out for now
+  # - cargo run --example test_authorization_header
+  # - cargo run --example test_get
+  # - cargo run --example test_post
 
-after_success:
-  - cargo coveralls
-  - cargo doc-upload
-
-env:
-  global:
-    - secure: "OodvJ/Vj1BQtq/YrDd5DuuqwxujzZUlXlIkE2l9rVVsO0MeB/4vEu6POlGvjjKao0Z+wBbrhFkoYJE3PKvapUOMFRInc/y3HXcPS57zJBj0RIicB8SnXB7aLfW4T8smaYHtm799POPDUGQNGJRBjg2nz/BdFlgWDBZRUDZNj4YI="
