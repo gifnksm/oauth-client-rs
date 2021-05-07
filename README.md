@@ -1,7 +1,10 @@
 # oauth-client-rs
 
+[![Crates.io](https://img.shields.io/crates/v/oauth-client.svg)](https://crates.io/crates/oauth-client)
+[![Docs.rs](https://docs.rs/oauth-client/badge.svg)](https://docs.rs/oauth-client)
+![LICENSE](https://img.shields.io/crates/l/oauth-client.svg)
 [![Build Status](https://travis-ci.org/gifnksm/oauth-client-rs.svg)](https://travis-ci.org/gifnksm/oauth-client-rs)
-[![crates.io](http://meritbadge.herokuapp.com/oauth-client)](https://crates.io/crates/oauth-client)
+![Maintenance](https://img.shields.io/badge/maintenance-passively--maintained-yellowgreen.svg)
 
 OAuth client for Rust
 
@@ -22,8 +25,8 @@ See [examples](./examples).
 
 Licensed under either of
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
 
