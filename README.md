@@ -1,7 +1,6 @@
 # oauth-client-rs
 
 [![Build Status](https://travis-ci.org/gifnksm/oauth-client-rs.svg)](https://travis-ci.org/gifnksm/oauth-client-rs)
-[![Coverage Status](https://coveralls.io/repos/gifnksm/oauth-client-rs/badge.svg?branch=master&service=github)](https://coveralls.io/github/gifnksm/oauth-client-rs?branch=master)
 [![crates.io](http://meritbadge.herokuapp.com/oauth-client)](https://crates.io/crates/oauth-client)
 
 OAuth client for Rust
