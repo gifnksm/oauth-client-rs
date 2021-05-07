@@ -141,7 +141,7 @@ fn signature(
     base64::encode(signature.as_ref())
 }
 
-/// Constuct plain-text header
+/// Construct plain-text header
 fn header(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
