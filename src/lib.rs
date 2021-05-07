@@ -48,6 +48,9 @@ use time::OffsetDateTime;
 /// Result type.
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Re-exporting `reqwest` crate.
+pub use reqwest;
+
 /// Error type.
 #[derive(Debug, Error)]
 #[non_exhaustive]
