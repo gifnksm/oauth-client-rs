@@ -10,7 +10,6 @@ edition = "2018"
 
 [dependencies]
 base64 = "0.13.0"
-failure = "0.1.8"
 failure_derive = "0.1.8"
 lazy_static = "1.4.0"
 log = "0.4.14"
@@ -18,6 +17,7 @@ rand = "0.8.3"
 ring = "0.16.20"
 time = "0.2.26"
 percent-encoding = "2.1.0"
+thiserror = "1.0.24"
 
 [dependencies.reqwest]
 version = "0.11.3"

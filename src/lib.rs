@@ -27,27 +27,41 @@
 #![warn(unused_results)]
 #![allow(unused_doc_comments)]
 
-use failure::{bail, Fail};
 use lazy_static::lazy_static;
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::blocking::{Client, RequestBuilder};
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
-use reqwest::StatusCode;
+use reqwest::{
+    blocking::{Client, RequestBuilder},
+    header::{AUTHORIZATION, CONTENT_TYPE},
+    StatusCode,
+};
 use ring::hmac;
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::io::Read;
-use std::iter;
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    io::{self, Read},
+    iter,
+};
+use thiserror::Error;
 use time::OffsetDateTime;
 
 /// Result type.
-pub type Result<T> = std::result::Result<T, failure::Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
-/// An error happening due to a HTTP status error.
-#[derive(Debug, Fail, Clone, Copy)]
-#[fail(display = "HTTP status error code {}", _0)]
-pub struct HttpStatusError(pub u16);
+/// Error type.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum Error {
+    /// An error happening due to a HTTP status error.
+    #[error("HTTP status error code: {0}")]
+    HttpStatus(StatusCode),
+    /// An error happening due to a IO error.
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+    /// An error happening due to a reqwest error.
+    #[error("reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
+}
 
 lazy_static! {
     static ref CLIENT: Client = Client::new();
@@ -292,7 +306,7 @@ pub fn post(
 fn send(builder: RequestBuilder) -> Result<Vec<u8>> {
     let mut response = builder.send()?;
     if response.status() != StatusCode::OK {
-        bail!(HttpStatusError(response.status().into()));
+        return Err(Error::HttpStatus(response.status()));
     }
     let mut buf = vec![];
     let _ = response.read_to_end(&mut buf)?;
