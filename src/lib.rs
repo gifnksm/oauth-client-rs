@@ -27,29 +27,27 @@
 #![warn(unused_results)]
 #![allow(unused_doc_comments)]
 
+use http::{HeaderValue, StatusCode, header::{AUTHORIZATION, CONTENT_TYPE, HeaderName}};
 use lazy_static::lazy_static;
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
+use reqwest::IntoUrl;
+#[cfg(feature="client-reqwest")]
 use reqwest::{
     blocking::{Client, RequestBuilder},
-    header::{AUTHORIZATION, CONTENT_TYPE},
-    StatusCode,
 };
 use ring::hmac;
-use std::{
-    borrow::Cow,
-    collections::HashMap,
-    io::{self, Read},
-    iter,
-};
+use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io::{self, Read}, iter};
 use thiserror::Error;
 use time::OffsetDateTime;
 
 /// Result type.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T,E=Error> = std::result::Result<T, E>;
 
+#[cfg(feature="client-reqwest")]
 /// Re-exporting `reqwest` crate.
 pub use reqwest;
+use std::fmt::Debug;
 
 /// Error type.
 #[derive(Debug, Error)]
@@ -62,11 +60,17 @@ pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
     /// An error happening due to a reqwest error.
+    #[cfg(feature="client-reqwest")]
     #[error("reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
+
+    #[cfg(not(feature="client-reqwest"))]
+    #[error("other error: {0}")]
+    CustomHTTPError(#[from] Box<dyn std::error::Error>)
 }
 
 lazy_static! {
+    #[cfg(feature="client-reqwest")]
     static ref CLIENT: Client = Client::new();
 }
 
@@ -234,7 +238,9 @@ fn get_header(
 /// # fn main() {
 /// const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
-/// let header = oauth_client::authorization_header("GET", REQUEST_TOKEN, &consumer, None, None);
+/// let header = oauth_client::authorization_header(
+///   "GET", REQUEST_TOKEN, &consumer, None, None
+/// );
 /// # }
 /// ```
 pub fn authorization_header(
@@ -258,20 +264,24 @@ pub fn authorization_header(
 /// let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
 /// let resp = String::from_utf8(bytes).unwrap();
 /// ```
-pub fn get(
+pub fn get<RB: RequestBuildah>(
     uri: &str,
     consumer: &Token<'_>,
     token: Option<&Token<'_>>,
     other_param: Option<&ParamList<'_>>,
-) -> Result<Vec<u8>> {
-    let (header, body) = get_header("GET", uri, consumer, token, other_param);
+) -> Result<Vec<u8>, RB::Error> {
+    let (header, body) = get_header(
+        "GET", uri, consumer, token, other_param
+    );
     let req_uri = if !body.is_empty() {
         format!("{}?{}", uri, body)
     } else {
         uri.to_string()
     };
 
-    let rsp = send(CLIENT.get(&req_uri).header(AUTHORIZATION, header))?;
+    let rsp = RB::new(http::Method::GET, req_uri)
+            .header(AUTHORIZATION, header)
+            .send()?;
     Ok(rsp)
 }
 
@@ -287,33 +297,93 @@ pub fn get(
 /// let bytes = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
 /// let resp = String::from_utf8(bytes).unwrap();
 /// ```
-pub fn post(
+pub fn post<RB: RequestBuildah>(
     uri: &str,
     consumer: &Token<'_>,
     token: Option<&Token<'_>>,
     other_param: Option<&ParamList<'_>>,
-) -> Result<Vec<u8>> {
-    let (header, body) = get_header("POST", uri, consumer, token, other_param);
+) -> Result<Vec<u8>, RB::Error> {
+    let (header, body) = get_header(
+        "POST", uri, consumer, token, other_param
+    );
 
-    let rsp = send(
-        CLIENT
-            .post(uri)
+    Ok(
+        RB::new(http::Method::POST, uri)
             .body(body)
             .header(AUTHORIZATION, header)
-            .header(CONTENT_TYPE, "application/x-www-form-urlencoded"),
-    )?;
-    Ok(rsp)
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .send()?
+    )
 }
 
-/// Send request to the server
-fn send(builder: RequestBuilder) -> Result<Vec<u8>> {
-    let mut response = builder.send()?;
-    if response.status() != StatusCode::OK {
-        return Err(Error::HttpStatus(response.status()));
+pub enum HTTPMethod {
+    GET,
+    POST
+}
+
+/// Default one to use if you're not using a custom HTTP Client
+/// and are ok with bundling reqwest
+#[cfg(feature="client-reqwest")]
+pub struct DefaultRequestBuilder {
+    inner: RequestBuilder
+}
+
+#[cfg(feature="client-reqwest")]
+impl RequestBuildah for DefaultRequestBuilder {
+    type Error = Error;
+    /// If the url is wrong then it will fail only during send
+    fn new(method: http::Method, url: impl IntoUrl) -> Self {
+        let rb = CLIENT.request(method, url);
+        Self {
+            inner: rb
+        }
     }
-    let mut buf = vec![];
-    let _ = response.read_to_end(&mut buf)?;
-    Ok(buf)
+
+    fn body(mut self, b: String) -> Self {
+        self.inner = self.inner.body(b);
+
+        self
+    }
+
+    fn header<K, V>(mut self, key: K, val: V) -> Self
+    where
+        HeaderName: TryFrom<K>,
+        HeaderValue: TryFrom<V>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
+        {
+        self.inner = self.inner.header(key, val);
+
+        self
+    }
+
+    fn send(self) -> std::result::Result<Vec<u8>, Error> {
+        let mut response = self.inner.send()?;
+        if response.status() != StatusCode::OK {
+            return Err(Error::HttpStatus(response.status()));
+        }
+        let mut buf = vec![];
+        let _ = response.read_to_end(&mut buf)?;
+        Ok(buf)
+    }
+}
+
+pub trait RequestBuildah {
+    type Error: std::error::Error + Debug;
+
+    fn new(method: http::Method, url: impl IntoUrl) -> Self;
+    // fn uri(&mut self, u: impl TryInto<url::Url>) -> &mut Self;
+    // fn method(&mut self, m: http::method::Method) -> &mut Self;
+    fn body(self, b: String) -> Self;
+    // fn header(&mut self, key: impl TryInto<HeaderName>, val: impl TryInto<HeaderValue>) -> &mut Self;
+    fn header<K,V>(self, key: K, val: V) -> Self
+    where
+        HeaderName: TryFrom<K>,
+        HeaderValue: TryFrom<V>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
+    ;
+    fn send(self) -> std::result::Result<Vec<u8>, Self::Error>;
 }
 
 #[cfg(test)]
