@@ -14,7 +14,7 @@
     unused_results
 )]
 
-use oauth_client::{self as oauth, Token};
+use oauth_client::{self as oauth, Token, DefaultRequestBuilder};
 use rand::{distributions::Alphanumeric, Rng};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -38,8 +38,7 @@ fn split_query(query: &'_ str) -> HashMap<Cow<'_, str>, Cow<'_, str>> {
 }
 
 fn get_request_token(consumer: &Token<'_>) -> Token<'static> {
-    let bytes = oauth::post(api::REQUEST_TOKEN, consumer, None, None).unwrap();
-    let resp = String::from_utf8(bytes).unwrap();
+    let resp = oauth::post::<DefaultRequestBuilder>(api::REQUEST_TOKEN, consumer, None, None).unwrap();
     println!("get_request_token response: {:?}", resp);
     let param = split_query(&resp[..]);
     Token::new(
@@ -49,8 +48,7 @@ fn get_request_token(consumer: &Token<'_>) -> Token<'static> {
 }
 
 fn get_access_token(consumer: &Token<'_>, request: &Token<'_>) -> Token<'static> {
-    let bytes = oauth::post(api::ACCESS_TOKEN, consumer, Some(request), None).unwrap();
-    let resp = String::from_utf8(bytes).unwrap();
+    let resp = oauth::post::<DefaultRequestBuilder>(api::ACCESS_TOKEN, consumer, Some(request), None).unwrap();
     println!("get_access_token response: {:?}", resp);
     let param = split_query(&resp[..]);
     Token::new(
@@ -77,8 +75,7 @@ fn echo(consumer: &Token<'_>, access: &Token<'_>) {
                 .collect(),
         );
     }
-    let bytes = oauth::post(api::ECHO, consumer, Some(access), Some(&req_param)).unwrap();
-    let resp = String::from_utf8(bytes).unwrap();
+    let resp = oauth::post::<DefaultRequestBuilder>(api::ECHO, consumer, Some(access), Some(&req_param)).unwrap();
     println!("echo response: {:?}", resp);
     let resp_param = split_query(&resp[..]);
     assert_eq!(req_param, resp_param);

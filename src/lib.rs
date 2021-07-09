@@ -14,9 +14,10 @@
 //! Send request for request token.
 //!
 //! ```
+//! # use oauth_client::DefaultRequestBuilder;
 //! const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 //! let consumer = oauth_client::Token::new("key", "secret");
-//! let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
+//! let bytes = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None).unwrap();
 //! ```
 #![warn(bad_style)]
 #![warn(missing_docs)]
@@ -31,11 +32,14 @@ use http::{HeaderValue, StatusCode, header::{AUTHORIZATION, CONTENT_TYPE, Header
 use lazy_static::lazy_static;
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::IntoUrl;
 #[cfg(feature="client-reqwest")]
+use reqwest::IntoUrl;
+#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
 use reqwest::{
     blocking::{Client, RequestBuilder},
 };
+use url::Url;
+use std::str::FromStr;
 use ring::hmac;
 use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io::{self, Read}, iter};
 use thiserror::Error;
@@ -69,8 +73,8 @@ pub enum Error {
     CustomHTTPError(#[from] Box<dyn std::error::Error>)
 }
 
+#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
 lazy_static! {
-    #[cfg(feature="client-reqwest")]
     static ref CLIENT: Client = Client::new();
 }
 
@@ -259,17 +263,17 @@ pub fn authorization_header(
 /// # Examples
 ///
 /// ```
+/// # use oauth_client::DefaultRequestBuilder;
 /// let REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
-/// let bytes = oauth_client::get(REQUEST_TOKEN, &consumer, None, None).unwrap();
-/// let resp = String::from_utf8(bytes).unwrap();
+/// let resp = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None).unwrap();
 /// ```
 pub fn get<RB: RequestBuildah>(
     uri: &str,
     consumer: &Token<'_>,
     token: Option<&Token<'_>>,
     other_param: Option<&ParamList<'_>>,
-) -> Result<Vec<u8>, RB::Error> {
+) -> Result<RB::ReturnValue, RB::Error> {
     let (header, body) = get_header(
         "GET", uri, consumer, token, other_param
     );
@@ -279,7 +283,7 @@ pub fn get<RB: RequestBuildah>(
         uri.to_string()
     };
 
-    let rsp = RB::new(http::Method::GET, req_uri)
+    let rsp = RB::new(http::Method::GET, &req_uri)
             .header(AUTHORIZATION, header)
             .send()?;
     Ok(rsp)
@@ -291,18 +295,18 @@ pub fn get<RB: RequestBuildah>(
 /// # Examples
 ///
 /// ```
-/// # let request = oauth_client::Token::new("key", "secret");
+/// # use oauth_client::DefaultRequestBuilder;
+/// let request = oauth_client::Token::new("key", "secret");
 /// let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
-/// let bytes = oauth_client::post(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
-/// let resp = String::from_utf8(bytes).unwrap();
+/// let resp = oauth_client::post::<DefaultRequestBuilder>(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
 /// ```
 pub fn post<RB: RequestBuildah>(
     uri: &str,
     consumer: &Token<'_>,
     token: Option<&Token<'_>>,
     other_param: Option<&ParamList<'_>>,
-) -> Result<Vec<u8>, RB::Error> {
+) -> Result<RB::ReturnValue, RB::Error> {
     let (header, body) = get_header(
         "POST", uri, consumer, token, other_param
     );
@@ -316,24 +320,20 @@ pub fn post<RB: RequestBuildah>(
     )
 }
 
-pub enum HTTPMethod {
-    GET,
-    POST
-}
-
 /// Default one to use if you're not using a custom HTTP Client
 /// and are ok with bundling reqwest
-#[cfg(feature="client-reqwest")]
+#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
 pub struct DefaultRequestBuilder {
-    inner: RequestBuilder
+    inner: RequestBuilder,
 }
 
-#[cfg(feature="client-reqwest")]
+#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
 impl RequestBuildah for DefaultRequestBuilder {
     type Error = Error;
+    type ReturnValue = String;
     /// If the url is wrong then it will fail only during send
-    fn new(method: http::Method, url: impl IntoUrl) -> Self {
-        let rb = CLIENT.request(method, url);
+    fn new(method: http::Method, url: &'_ str) -> Self {
+        let rb = CLIENT.request(method, Url::from_str(url).unwrap());
         Self {
             inner: rb
         }
@@ -357,21 +357,22 @@ impl RequestBuildah for DefaultRequestBuilder {
         self
     }
 
-    fn send(self) -> std::result::Result<Vec<u8>, Error> {
+    fn send(mut self) -> std::result::Result<Self::ReturnValue, Error> {
         let mut response = self.inner.send()?;
         if response.status() != StatusCode::OK {
             return Err(Error::HttpStatus(response.status()));
         }
-        let mut buf = vec![];
-        let _ = response.read_to_end(&mut buf)?;
+        let mut buf = String::with_capacity(200);
+        let _ = response.read_to_string(&mut buf)?;
         Ok(buf)
     }
 }
 
 pub trait RequestBuildah {
-    type Error: std::error::Error + Debug;
+    type Error: Debug;
+    type ReturnValue;
 
-    fn new(method: http::Method, url: impl IntoUrl) -> Self;
+    fn new(method: http::Method, url: &'_ str) -> Self;
     // fn uri(&mut self, u: impl TryInto<url::Url>) -> &mut Self;
     // fn method(&mut self, m: http::method::Method) -> &mut Self;
     fn body(self, b: String) -> Self;
@@ -383,13 +384,95 @@ pub trait RequestBuildah {
         <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
     ;
-    fn send(self) -> std::result::Result<Vec<u8>, Self::Error>;
+    fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error>;
 }
 
+#[macro_export]
+macro_rules! count {
+    () => (0usize);
+    ( $x:tt $($xs:tt)* ) => (1usize + $crate::count!($($xs)*));
+}
+use log::warn;
+
+#[derive(Debug, Error)]
+pub enum ParseQueryError {
+    #[error("Not enough key value pairs provided. Was: {0}")]
+    NotEnoughPairs(usize),
+    #[error("One of the key value pairs was invalid.")]
+    InvalidKeyValuePair
+}
 #[cfg(test)]
 mod tests {
-    use super::encode;
+    use super::*;
     use std::collections::HashMap;
+
+    #[test]
+    fn macro_rulez_dont_sort_already_sorted() {
+        let input = "b=BBB&a=AAA";
+        let [(a_key, a),(b_key, b)] = parse_query_string!(input, false, "a", "b").unwrap();
+        assert_eq!(a_key, "b");
+        assert_eq!(b_key, "a");
+        assert_eq!(b, "AAA");
+        assert_eq!(a, "BBB");
+    }
+
+    #[test]
+    fn macro_rulez_sort_out_of_order() {
+        let input = "b=BBB&a=AAA";
+        let [(a_key, a),(b_key, b)] = parse_query_string!(input, true, "a", "b").unwrap();
+        assert_eq!(a_key, "a");
+        assert_eq!(b_key, "b");
+        assert_eq!(a, "AAA");
+        assert_eq!(b, "BBB");
+    }
+    #[test]
+    fn macro_rulez_sort_already_sorted() {
+        let input = "a=AAA&b=BBB";
+        let [(a_key, a),(b_key, b)] = parse_query_string!(input, true, "a", "b").unwrap();
+        assert_eq!(a_key, "a");
+        assert_eq!(b_key, "b");
+        assert_eq!(a, "AAA");
+        assert_eq!(b, "BBB");
+    }
+
+    #[test]
+    fn macro_rulez_invalid_keys() {
+        let input = "a=AAA&b=BBB";
+        match parse_query_string!(input, true, "a", "x") {
+            Ok(_) => panic!("Should error"),
+            Err(e) => match e {
+                ParseQueryError::NotEnoughPairs(_) => {},
+                _ => panic!("Wrong error")
+            }
+        }
+    }
+
+    #[test]
+    fn macro_rulez_empty_string() {
+        let input = "";
+        assert_eq!("".split('&').collect::<Vec<_>>(), [""]);
+        assert_eq!("&".split('&').collect::<Vec<_>>(), ["", ""]);
+        assert_eq!(0, "".split_terminator('&').collect::<Vec<_>>().len());
+        match parse_query_string!(input, true, "a", "b") {
+            Ok(_) => panic!("Should error"),
+            Err(e) => match e {
+                ParseQueryError::NotEnoughPairs(_) => {},
+                _ => panic!("Wrong error")
+            }
+        }
+    }
+
+    #[test]
+    fn macro_rulez_invalid_format() {
+        let input = "x&";
+        match parse_query_string!(input, true, "x") {
+            Ok(_) => panic!("Should error"),
+            Err(e) => match e {
+                ParseQueryError::InvalidKeyValuePair => {},
+                _ => panic!("Wrong error")
+            }
+        }
+    }
 
     #[test]
     fn query() {
@@ -429,5 +512,63 @@ mod tests {
         assert_eq!(encode(method), "GET");
         assert_eq!(encode(uri), encoded_uri);
         assert_eq!(encode(&query), encoded_query);
+    }
+}
+
+/// Assumptions:
+/// 1. Keys are distinct
+///
+/// Arguments:
+/// 1. &str Key to search
+/// 2. bool Whether to (unstable-y) sort the return value (for reproducibility)
+/// 3+. Variadic! `&str` The names of the keys. (If put more than existing, or invalid then error might happen
+///    because we are looking for all provided keys.)
+#[macro_export]
+macro_rules! parse_query_string {
+    ($query:expr, $sort:expr, $( $key:expr ),+) => {
+        {
+            const count_keys: usize = $crate::count!($($key)*);
+
+            let used_for_question_mark = || -> Result<_, $crate::ParseQueryError> {
+                let mut rv: [Option<(&str, &str)>; count_keys] = [None; count_keys];
+                let mut num_inserted = 0;
+                for kv in $query.split_terminator('&') {
+                    let mut iter = kv.split_terminator('=');
+                    let key = iter.next().ok_or($crate::ParseQueryError::InvalidKeyValuePair)?;
+                    let val = iter.next().ok_or($crate::ParseQueryError::InvalidKeyValuePair)?;
+
+                    match key {
+                        $($key)|+ => {
+                            rv[num_inserted] = Some((key, val));
+                            num_inserted += 1;
+                        },
+                        key => {
+                            warn!("Unexpected key {:?}. (value {:?})", key, val);
+                        }
+                    }
+                }
+
+                if num_inserted < count_keys {
+                    return Err(
+                        $crate::ParseQueryError::NotEnoughPairs(num_inserted)
+                    );
+                }
+
+                // SAFETY:
+                //  1. We overwrote all Nones, with actual values.
+                //  2. References are non-null so their size is the same as options.
+                let mut rv: [(&str, &str); count_keys] = unsafe {
+                    std::mem::transmute::<[Option<(&str, &str)>; count_keys], [(&str, &str); count_keys]>(rv)
+                };
+
+                if $sort {
+                    // NOTE: Assumption: keys are distinct
+                    rv.sort_unstable_by_key(|&(k,v)| k);
+                }
+
+                Ok(rv)
+            };
+            used_for_question_mark()
+        }
     }
 }
