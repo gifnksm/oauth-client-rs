@@ -17,7 +17,7 @@
 //! # use oauth_client::DefaultRequestBuilder;
 //! const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 //! let consumer = oauth_client::Token::new("key", "secret");
-//! let bytes = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None).unwrap();
+//! let bytes = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None, ()).unwrap();
 //! ```
 #![warn(bad_style)]
 #![warn(missing_docs)]
@@ -146,7 +146,7 @@ fn encode(s: &str) -> String {
 }
 
 /// Create signature. See https://dev.twitter.com/oauth/overview/creating-signatures
-fn signature(
+pub fn signature(
     method: &str,
     uri: &str,
     query: &str,
@@ -266,13 +266,14 @@ pub fn authorization_header(
 /// # use oauth_client::DefaultRequestBuilder;
 /// let REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
-/// let resp = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None).unwrap();
+/// let resp = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None, &()).unwrap();
 /// ```
 pub fn get<RB: RequestBuildah>(
     uri: &str,
     consumer: &Token<'_>,
     token: Option<&Token<'_>>,
     other_param: Option<&ParamList<'_>>,
+    client: &RB::ClientBuilder,
 ) -> Result<RB::ReturnValue, RB::Error> {
     let (header, body) = get_header(
         "GET", uri, consumer, token, other_param
@@ -283,7 +284,7 @@ pub fn get<RB: RequestBuildah>(
         uri.to_string()
     };
 
-    let rsp = RB::new(http::Method::GET, &req_uri)
+    let rsp = RB::new(http::Method::GET, &req_uri, &client)
             .header(AUTHORIZATION, header)
             .send()?;
     Ok(rsp)
@@ -297,22 +298,23 @@ pub fn get<RB: RequestBuildah>(
 /// ```
 /// # use oauth_client::DefaultRequestBuilder;
 /// let request = oauth_client::Token::new("key", "secret");
-/// let ACCESS_TOKEN: &'static str = "http://oauthbin.com/v1/access-token";
+/// let ACCESS_TOKEN: &'static str = "https://oauthbin.com/v1/access-token";
 /// let consumer = oauth_client::Token::new("key", "secret");
-/// let resp = oauth_client::post::<DefaultRequestBuilder>(ACCESS_TOKEN, &consumer, Some(&request), None).unwrap();
+/// let resp = oauth_client::post::<DefaultRequestBuilder>(ACCESS_TOKEN, &consumer, Some(&request), None, &()).unwrap();
 /// ```
 pub fn post<RB: RequestBuildah>(
     uri: &str,
     consumer: &Token<'_>,
     token: Option<&Token<'_>>,
     other_param: Option<&ParamList<'_>>,
+    client: &RB::ClientBuilder,
 ) -> Result<RB::ReturnValue, RB::Error> {
     let (header, body) = get_header(
         "POST", uri, consumer, token, other_param
     );
 
     Ok(
-        RB::new(http::Method::POST, uri)
+        RB::new(http::Method::POST, uri, client)
             .body(body)
             .header(AUTHORIZATION, header)
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
@@ -331,8 +333,9 @@ pub struct DefaultRequestBuilder {
 impl RequestBuildah for DefaultRequestBuilder {
     type Error = Error;
     type ReturnValue = String;
+    type ClientBuilder = ();
     /// If the url is wrong then it will fail only during send
-    fn new(method: http::Method, url: &'_ str) -> Self {
+    fn new(method: http::Method, url: &'_ str, _: &Self::ClientBuilder) -> Self {
         let rb = CLIENT.request(method, Url::from_str(url).unwrap());
         Self {
             inner: rb
@@ -371,8 +374,9 @@ impl RequestBuildah for DefaultRequestBuilder {
 pub trait RequestBuildah {
     type Error: Debug;
     type ReturnValue;
+    type ClientBuilder;
 
-    fn new(method: http::Method, url: &'_ str) -> Self;
+    fn new(method: http::Method, url: &'_ str, client: &Self::ClientBuilder) -> Self;
     // fn uri(&mut self, u: impl TryInto<url::Url>) -> &mut Self;
     // fn method(&mut self, m: http::method::Method) -> &mut Self;
     fn body(self, b: String) -> Self;
