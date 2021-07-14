@@ -17,7 +17,7 @@
 //! # use oauth_client::DefaultRequestBuilder;
 //! const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 //! let consumer = oauth_client::Token::new("key", "secret");
-//! let bytes = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None, ()).unwrap();
+//! let bytes = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None, &()).unwrap();
 //! ```
 #![warn(bad_style)]
 #![warn(missing_docs)]
@@ -29,6 +29,7 @@
 #![allow(unused_doc_comments)]
 
 use http::{HeaderValue, StatusCode, header::{AUTHORIZATION, CONTENT_TYPE, HeaderName}};
+#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
 use lazy_static::lazy_static;
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
@@ -38,6 +39,7 @@ use reqwest::IntoUrl;
 use reqwest::{
     blocking::{Client, RequestBuilder},
 };
+#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
 use url::Url;
 use std::str::FromStr;
 use ring::hmac;
@@ -396,7 +398,6 @@ macro_rules! count {
     () => (0usize);
     ( $x:tt $($xs:tt)* ) => (1usize + $crate::count!($($xs)*));
 }
-use log::warn;
 
 #[derive(Debug, Error)]
 pub enum ParseQueryError {
@@ -411,7 +412,7 @@ mod tests {
     use std::collections::HashMap;
 
     #[test]
-    fn macro_rulez_dont_sort_already_sorted() {
+    fn macro_rulez_dont_sort_doesnt_sort() {
         let input = "b=BBB&a=AAA";
         let [(a_key, a),(b_key, b)] = parse_query_string!(input, false, "a", "b").unwrap();
         assert_eq!(a_key, "b");
@@ -518,9 +519,11 @@ mod tests {
         assert_eq!(encode(&query), encoded_query);
     }
 }
+use log::warn;
 
 /// Assumptions:
 /// 1. Keys are distinct
+/// 2. `warn!` is in scope, either from `log` or `tracing` etc.
 ///
 /// Arguments:
 /// 1. &str Key to search
