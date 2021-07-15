@@ -260,19 +260,17 @@ pub fn check_signature_request<R: GenericRequest>(
         all_together_max += qp.len();
         query_params = Some(qp);
     }
-    fn split_key_value_pair(qp: &str) -> Result<(Cow<str>, Cow<str>), VerifyError> {
+    fn split_key_value_pair(qp: &str) -> Result<(&str, &str), VerifyError> {
         qp.split_once('=')
             .ok_or(VerifyError::InvalidKeyValuePair)
-            .map(|(k,v)| (encode(k), encode(v)))
+            .map(|(k,v)| (k,v))
     }
     // First one starts with "OAuth oauth_callback=..."
     auth_params_without_signature[0] = &auth_params_without_signature[0]["OAuth ".len()..];
-    let query: Result<Vec<(Cow<str>, Cow<str>)>, VerifyError> = auth_params_without_signature
+    let query: Result<Vec<(&str, &str)>, VerifyError> = auth_params_without_signature
         .into_iter()
         .map(|qp|
-            qp.split_once('=')
-                .ok_or(VerifyError::InvalidKeyValuePair)
-                .map(|(k,v)| (encode(k), encode(&v[1..v.len()-1])))
+            split_key_value_pair(qp).map(|(k,v)| (k, &v[1..v.len()-1]))
         )
         // Append the query from URL params at the end
         .chain(
@@ -286,18 +284,15 @@ pub fn check_signature_request<R: GenericRequest>(
     let mut query = query?;
     query.sort_by(|(a,_), (b, _)| a.cmp(b));
 
-    let empty: Cow<_> = "".into();
-    let ampersand: Cow<_> = "&".into();
-
     let query: String = query.iter()
         .enumerate()
         .flat_map(|(i, (k, v))| {
             if i > all_other_max {
                 // Url query params don't have quotes around them
-                [k, "=", v, if i == all_together_max {&empty} else {&ampersand}]
+                [k, "=", v, if i == all_together_max {&""} else {&"&"}]
             } else {
                 // Other ones do have quotes around them
-                [k, "=", v, if i == all_together_max {&empty} else {&ampersand}]
+                [k, "=", v, if i == all_together_max {&""} else {&"&"}]
             }
         })
         .collect();
@@ -724,6 +719,7 @@ mod tests {
             let mut hm: ParamList<'_> = HashMap::with_capacity(2);
             assert!(hm.insert("oauth_any_string".into(), "gets_put_into_auth_header".into()).is_none());
             assert!(hm.insert("doesnt_start_with_oauth".into(), "doesnt_get_put_into_auth_header".into()).is_none());
+            assert!(hm.insert("oauth_callback".into(), "http://xd.xy?xy=xz&xd=xx".into()).is_none());
 
             hm
         };
