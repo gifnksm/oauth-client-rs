@@ -29,17 +29,15 @@
 #![allow(unused_doc_comments)]
 
 use http::{HeaderValue, StatusCode, header::{AUTHORIZATION, CONTENT_TYPE, HeaderName}};
-#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
+#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 use lazy_static::lazy_static;
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
-#[cfg(feature="client-reqwest")]
-use reqwest::IntoUrl;
-#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
+#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 use reqwest::{
     blocking::{Client, RequestBuilder},
 };
-#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
+#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 use url::Url;
 use std::str::FromStr;
 use ring::hmac;
@@ -48,9 +46,9 @@ use thiserror::Error;
 use time::OffsetDateTime;
 
 /// Result type.
-pub type Result<T,E=Error> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[cfg(feature="client-reqwest")]
+#[cfg(feature = "client-reqwest")]
 /// Re-exporting `reqwest` crate.
 pub use reqwest;
 use std::fmt::Debug;
@@ -66,16 +64,16 @@ pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
     /// An error happening due to a reqwest error.
-    #[cfg(feature="client-reqwest")]
+    #[cfg(feature = "client-reqwest")]
     #[error("reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
 
-    #[cfg(not(feature="client-reqwest"))]
+    #[cfg(not(feature = "client-reqwest"))]
     #[error("other error: {0}")]
-    CustomHTTPError(#[from] Box<dyn std::error::Error>)
+    CustomHTTPError(#[from] Box<dyn std::error::Error>),
 }
 
-#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
+#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 lazy_static! {
     static ref CLIENT: Client = Client::new();
 }
@@ -98,9 +96,9 @@ impl<'a> Token<'a> {
     /// let consumer = oauth_client::Token::new("key", "secret");
     /// ```
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
-    where
-        K: Into<Cow<'a, str>>,
-        S: Into<Cow<'a, str>>,
+        where
+            K: Into<Cow<'a, str>>,
+            S: Into<Cow<'a, str>>,
     {
         Token {
             key: key.into(),
@@ -113,9 +111,9 @@ impl<'a> Token<'a> {
 pub type ParamList<'a> = HashMap<Cow<'a, str>, Cow<'a, str>>;
 
 fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option<Cow<'a, str>>
-where
-    K: Into<Cow<'a, str>>,
-    V: Into<Cow<'a, str>>,
+    where
+        K: Into<Cow<'a, str>>,
+        V: Into<Cow<'a, str>>,
 {
     param.insert(key.into(), value.into())
 }
@@ -168,7 +166,9 @@ pub fn signature(
     base64::encode(signature.as_ref())
 }
 
-/// Construct plain-text header
+/// Construct plain-text header.
+///
+/// See https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.1
 fn header(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
@@ -278,7 +278,7 @@ pub fn get<RB: RequestBuildah>(
     client: &RB::ClientBuilder,
 ) -> Result<RB::ReturnValue, RB::Error> {
     let (header, body) = get_header(
-        "GET", uri, consumer, token, other_param
+        "GET", uri, consumer, token, other_param,
     );
     let req_uri = if !body.is_empty() {
         format!("{}?{}", uri, body)
@@ -287,8 +287,8 @@ pub fn get<RB: RequestBuildah>(
     };
 
     let rsp = RB::new(http::Method::GET, &req_uri, &client)
-            .header(AUTHORIZATION, header)
-            .send()?;
+        .header(AUTHORIZATION, header)
+        .send()?;
     Ok(rsp)
 }
 
@@ -312,7 +312,7 @@ pub fn post<RB: RequestBuildah>(
     client: &RB::ClientBuilder,
 ) -> Result<RB::ReturnValue, RB::Error> {
     let (header, body) = get_header(
-        "POST", uri, consumer, token, other_param
+        "POST", uri, consumer, token, other_param,
     );
 
     Ok(
@@ -326,12 +326,12 @@ pub fn post<RB: RequestBuildah>(
 
 /// Default one to use if you're not using a custom HTTP Client
 /// and are ok with bundling reqwest
-#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
+#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 pub struct DefaultRequestBuilder {
     inner: RequestBuilder,
 }
 
-#[cfg(all(feature="client-reqwest", feature="reqwest-blocking"))]
+#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 impl RequestBuildah for DefaultRequestBuilder {
     type Error = Error;
     type ReturnValue = String;
@@ -351,18 +351,18 @@ impl RequestBuildah for DefaultRequestBuilder {
     }
 
     fn header<K, V>(mut self, key: K, val: V) -> Self
-    where
-        HeaderName: TryFrom<K>,
-        HeaderValue: TryFrom<V>,
-        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
-        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
-        {
+        where
+            HeaderName: TryFrom<K>,
+            HeaderValue: TryFrom<V>,
+            <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+            <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
+    {
         self.inner = self.inner.header(key, val);
 
         self
     }
 
-    fn send(mut self) -> std::result::Result<Self::ReturnValue, Error> {
+    fn send(self) -> std::result::Result<Self::ReturnValue, Error> {
         let mut response = self.inner.send()?;
         if response.status() != StatusCode::OK {
             return Err(Error::HttpStatus(response.status()));
@@ -373,48 +373,68 @@ impl RequestBuildah for DefaultRequestBuilder {
     }
 }
 
+/// A generic request builder. Allows you to use any HTTP client.
+/// See [`DefaultRequestBuilder`] for one that uses [`reqwest::Client`].
 pub trait RequestBuildah {
+    /// The error produced while sending
     type Error: Debug;
+
+    /// Generic return value allows you to return a future, allowing the possibility
+    /// of using this library in `async` environments.
     type ReturnValue;
+
+    /// This is useful for reusing existing connection pools.
     type ClientBuilder;
 
+    /// Construct the request builder
     fn new(method: http::Method, url: &'_ str, client: &Self::ClientBuilder) -> Self;
-    // fn uri(&mut self, u: impl TryInto<url::Url>) -> &mut Self;
-    // fn method(&mut self, m: http::method::Method) -> &mut Self;
+
+    /// Set the body
     fn body(self, b: String) -> Self;
-    // fn header(&mut self, key: impl TryInto<HeaderName>, val: impl TryInto<HeaderValue>) -> &mut Self;
-    fn header<K,V>(self, key: K, val: V) -> Self
-    where
-        HeaderName: TryFrom<K>,
-        HeaderValue: TryFrom<V>,
-        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
-        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
-    ;
+
+    /// Set a header
+    fn header<K, V>(self, key: K, val: V) -> Self
+        where
+            HeaderName: TryFrom<K>,
+            HeaderValue: TryFrom<V>,
+            <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+            <HeaderValue as TryFrom<V>>::Error: Into<http::Error>;
+
+    /// A `build`-like function that also sends the request
     fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error>;
 }
 
+
 #[macro_export]
+/// Counts number of var-args
 macro_rules! count {
     () => (0usize);
     ( $x:tt $($xs:tt)* ) => (1usize + $crate::count!($($xs)*));
 }
 
+/// Errors possible while using [`parse_query_string`]!.
 #[derive(Debug, Error)]
 pub enum ParseQueryError {
+    /// You provided more keys than there actually were to parse.
+    /// Empty string.
     #[error("Not enough key value pairs provided. Was: {0}")]
     NotEnoughPairs(usize),
+
+    /// Lacks an `=`, or nothing after the `=` sign in some key value pair.
     #[error("One of the key value pairs was invalid.")]
-    InvalidKeyValuePair
+    InvalidKeyValuePair,
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use log::LevelFilter;
 
     #[test]
     fn macro_rulez_dont_sort_doesnt_sort() {
         let input = "b=BBB&a=AAA";
-        let [(a_key, a),(b_key, b)] = parse_query_string!(input, false, "a", "b").unwrap();
+        let [(a_key, a), (b_key, b)] = parse_query_string!(input, false, "a", "b").unwrap();
         assert_eq!(a_key, "b");
         assert_eq!(b_key, "a");
         assert_eq!(b, "AAA");
@@ -424,16 +444,17 @@ mod tests {
     #[test]
     fn macro_rulez_sort_out_of_order() {
         let input = "b=BBB&a=AAA";
-        let [(a_key, a),(b_key, b)] = parse_query_string!(input, true, "a", "b").unwrap();
+        let [(a_key, a), (b_key, b)] = parse_query_string!(input, true, "a", "b").unwrap();
         assert_eq!(a_key, "a");
         assert_eq!(b_key, "b");
         assert_eq!(a, "AAA");
         assert_eq!(b, "BBB");
     }
+
     #[test]
     fn macro_rulez_sort_already_sorted() {
         let input = "a=AAA&b=BBB";
-        let [(a_key, a),(b_key, b)] = parse_query_string!(input, true, "a", "b").unwrap();
+        let [(a_key, a), (b_key, b)] = parse_query_string!(input, true, "a", "b").unwrap();
         assert_eq!(a_key, "a");
         assert_eq!(b_key, "b");
         assert_eq!(a, "AAA");
@@ -446,7 +467,7 @@ mod tests {
         match parse_query_string!(input, true, "a", "x") {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
-                ParseQueryError::NotEnoughPairs(_) => {},
+                ParseQueryError::NotEnoughPairs(_) => {}
                 _ => panic!("Wrong error")
             }
         }
@@ -461,7 +482,7 @@ mod tests {
         match parse_query_string!(input, true, "a", "b") {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
-                ParseQueryError::NotEnoughPairs(_) => {},
+                ParseQueryError::NotEnoughPairs(_) => {}
                 _ => panic!("Wrong error")
             }
         }
@@ -473,7 +494,7 @@ mod tests {
         match parse_query_string!(input, true, "x") {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
-                ParseQueryError::InvalidKeyValuePair => {},
+                ParseQueryError::InvalidKeyValuePair => {}
                 _ => panic!("Wrong error")
             }
         }
@@ -484,7 +505,7 @@ mod tests {
         let mut map = HashMap::new();
         let _ = map.insert("aaa".into(), "AAA".into());
         let _ = map.insert("bbbb".into(), "BBBB".into());
-        let query = super::join_query(&map);
+        let query = join_query(&map);
         assert_eq!("aaa=AAA&bbbb=BBBB", query);
     }
 
@@ -500,9 +521,9 @@ mod tests {
             "oauth_timestamp=1471445561&",
             "oauth_version=1.0",
         ]
-        .iter()
-        .cloned()
-        .collect::<String>();
+            .iter()
+            .cloned()
+            .collect::<String>();
         let encoded_query = [
             "oauth_consumer_key%3Dkey%26",
             "oauth_nonce%3Ds6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA%26",
@@ -510,15 +531,16 @@ mod tests {
             "oauth_timestamp%3D1471445561%26",
             "oauth_version%3D1.0",
         ]
-        .iter()
-        .cloned()
-        .collect::<String>();
+            .iter()
+            .cloned()
+            .collect::<String>();
 
         assert_eq!(encode(method), "GET");
         assert_eq!(encode(uri), encoded_uri);
         assert_eq!(encode(&query), encoded_query);
     }
 }
+
 use log::warn;
 
 /// Assumptions:
@@ -534,10 +556,10 @@ use log::warn;
 macro_rules! parse_query_string {
     ($query:expr, $sort:expr, $( $key:expr ),+) => {
         {
-            const count_keys: usize = $crate::count!($($key)*);
+            const NUM_KEYS: usize = $crate::count!($($key)*);
 
             let used_for_question_mark = || -> Result<_, $crate::ParseQueryError> {
-                let mut rv: [Option<(&str, &str)>; count_keys] = [None; count_keys];
+                let mut rv: [Option<(&str, &str)>; NUM_KEYS] = [None; NUM_KEYS];
                 let mut num_inserted = 0;
                 for kv in $query.split_terminator('&') {
                     let mut iter = kv.split_terminator('=');
@@ -555,7 +577,7 @@ macro_rules! parse_query_string {
                     }
                 }
 
-                if num_inserted < count_keys {
+                if num_inserted < NUM_KEYS {
                     return Err(
                         $crate::ParseQueryError::NotEnoughPairs(num_inserted)
                     );
@@ -564,13 +586,13 @@ macro_rules! parse_query_string {
                 // SAFETY:
                 //  1. We overwrote all Nones, with actual values.
                 //  2. References are non-null so their size is the same as options.
-                let mut rv: [(&str, &str); count_keys] = unsafe {
-                    std::mem::transmute::<[Option<(&str, &str)>; count_keys], [(&str, &str); count_keys]>(rv)
+                let mut rv: [(&str, &str); NUM_KEYS] = unsafe {
+                    std::mem::transmute::<[Option<(&str, &str)>; NUM_KEYS], [(&str, &str); NUM_KEYS]>(rv)
                 };
 
                 if $sort {
                     // NOTE: Assumption: keys are distinct
-                    rv.sort_unstable_by_key(|&(k,v)| k);
+                    rv.sort_unstable_by_key(|&(k,_v)| k);
                 }
 
                 Ok(rv)
