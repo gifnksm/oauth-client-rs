@@ -166,6 +166,188 @@ pub fn signature(
     base64::encode(signature.as_ref())
 }
 
+/// Things that can go wrong while verifying a request's signature
+#[cfg(feature = "client-reqwest")]
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum VerifyError {
+    /// No authorizatinon header
+    #[error("Authorization header not found")]
+    NoAuthorizationHeader,
+
+    /// Invalid header
+    #[error("Non ASCII values in header: {0}")]
+    NonASCIIHeader(#[source] http::header::ToStrError),
+
+    /// Invalid params
+    #[error("Invalid key value pair in query params")]
+    InvalidKeyValuePair
+}
+
+/// Generic request type. Allows you to pass any [`reqwest::Request`]-like object.
+/// You're gonna need to wrap whatever client's `Request` type you're using in your own
+/// type, as the orphan rules won't allow you to `impl` this trait.
+pub trait GenericRequest {
+    /// Headers
+    fn headers(&self) -> &http::header::HeaderMap<HeaderValue>;
+
+    /// Url
+    fn url(&self) -> &str;
+
+    /// Method.
+    fn method(&self) -> &str;
+}
+
+#[cfg(feature="client-reqwest")]
+impl GenericRequest for reqwest::Request {
+    fn headers(&self) -> &http::header::HeaderMap<HeaderValue> {
+        self.headers()
+    }
+
+    fn url(&self) -> &str {
+        if let Some(host) = self.headers().get("host") {
+            // Host field actually contains the url used to connect, while the url provided
+            // by the request can be inaccurate
+            host.to_str().unwrap_or_else(|_e| self.url().as_str())
+        } else {
+            self.url().as_str()
+        }
+    }
+
+    fn method(&self) -> &str {
+        self.method().as_str()
+    }
+}
+
+/// Arguments
+/// - request
+/// - consumer_secret
+/// - token_secret
+/// - url_middleware - in case you want to fix localhost urls, etc.
+pub fn check_signature_request<R: GenericRequest>(
+    request: R,
+    consumer_secret: &str,
+    token_secret: Option<&str>,
+    mut url_middleware: impl FnMut(&str) -> Cow<str>
+) -> Result<bool, VerifyError> {
+    let authorization_header = request
+        .headers()
+        .get("Authorization")
+        .ok_or(VerifyError::NoAuthorizationHeader)?;
+    dbg!(&authorization_header);
+
+    let (provided_signature, mut auth_params_without_signature): (
+        Vec<&str>,
+        Vec<&str>,
+    ) = authorization_header
+        .to_str()
+        .map_err(|e| VerifyError::NonASCIIHeader(e))?
+        .split(",")
+        .map(str::trim)
+        .partition(|x| x.starts_with("oauth_signature="));
+    dbg!(&provided_signature, &auth_params_without_signature);
+
+    assert_eq!(provided_signature.len(), 1, "provided_signature: {:?}", provided_signature);
+    let provided_signature = provided_signature.first().unwrap();
+    let all_other_max = auth_params_without_signature.len()  - 1;
+    let mut all_together_max = all_other_max;
+    let mut query_params = None;
+    let mut url = request.url();
+    if let Some(qm_i) = request.url().rfind('?') {
+        // Strip query params from url
+        url = &url[..qm_i];
+        let qp = request.url()[qm_i+1..].split('&').collect::<Vec<&str>>();
+        all_together_max += qp.len();
+        query_params = Some(qp);
+    }
+    fn split_key_value_pair(qp: &str) -> Result<(Cow<str>, Cow<str>), VerifyError> {
+        qp.split_once('=')
+            .ok_or(VerifyError::InvalidKeyValuePair)
+            .map(|(k,v)| (encode(k), encode(v)))
+    }
+    // First one starts with "OAuth oauth_callback=..."
+    auth_params_without_signature[0] = &auth_params_without_signature[0]["OAuth ".len()..];
+    let query: Result<Vec<(Cow<str>, Cow<str>)>, VerifyError> = auth_params_without_signature
+        .into_iter()
+        .map(|qp|
+            qp.split_once('=')
+                .ok_or(VerifyError::InvalidKeyValuePair)
+                .map(|(k,v)| (encode(k), encode(&v[1..v.len()-1])))
+        )
+        // Append the query from URL params at the end
+        .chain(
+            if let Some(query_params) = query_params.take() {
+                query_params.into_iter()
+            } else {
+                Vec::new().into_iter()
+            }.map(split_key_value_pair)
+        )
+        .collect();
+    let mut query = query?;
+    query.sort_by(|(a,_), (b, _)| a.cmp(b));
+
+    let empty: Cow<_> = "".into();
+    let ampersand: Cow<_> = "&".into();
+
+    let query: String = query.iter()
+        .enumerate()
+        .flat_map(|(i, (k, v))| {
+            if i > all_other_max {
+                // Url query params don't have quotes around them
+                [k, "=", v, if i == all_together_max {&empty} else {&ampersand}]
+            } else {
+                // Other ones do have quotes around them
+                [k, "=", v, if i == all_together_max {&empty} else {&ampersand}]
+            }
+        })
+        .collect();
+    dbg!(&query);
+
+    // Fix the url provided by reqwest::Request, e.g. being `localhost` instead of `127.0.0.1`
+    let url = url_middleware(url);
+    dbg!(&url);
+
+    return Ok(
+        check_signature(
+            &provided_signature
+                ["oauth_signature=\"".len()..provided_signature.len() - 1],
+            request.method(),
+            &url,
+            &query,
+            consumer_secret,
+            token_secret
+        )
+    );
+}
+
+/// Checks if the signature created by the given request data is the same
+/// as the provided signature.
+///
+/// See [`check_signature_request`] for a function that automatically
+/// does this with any [`GenericRequest`]
+pub fn check_signature(
+    signature_to_check: &str,
+    method: &str,
+    uri: &str,
+    query: &str,
+    consumer_secret: &str,
+    token_secret: Option<&str>,
+) -> bool {
+    dbg!(&signature_to_check);
+    let signature = signature(
+        method,
+        uri,
+        query,
+        consumer_secret,
+        token_secret,
+    );
+    let new_encoded_signature = encode(&signature);
+    dbg!(&new_encoded_signature);
+
+    new_encoded_signature == signature_to_check
+}
+
+
 /// Construct plain-text header.
 ///
 /// See https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.1
@@ -498,6 +680,66 @@ mod tests {
                 _ => panic!("Wrong error")
             }
         }
+    }
+
+    #[test]
+    fn check_signature_request_test() {
+        simple_logger::SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();
+        struct DummyRequestBuilder(reqwest::RequestBuilder);
+
+        impl RequestBuildah for DummyRequestBuilder {
+            type Error = reqwest::Error;
+            type ReturnValue = reqwest::Request;
+            type ClientBuilder = reqwest::Client;
+
+            fn new(method: http::Method, url: &'_ str, client: &Self::ClientBuilder) -> Self {
+                Self(
+                    client.request(method, url)
+                )
+            }
+            fn body(mut self, b: String) -> Self {
+                self.0 = self.0.body(b);
+
+                self
+            }
+            fn header<K, V>(mut self, key: K, val: V) -> Self
+                where
+                    HeaderName: TryFrom<K>,
+                    HeaderValue: TryFrom<V>,
+                    <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+                    <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
+            {
+                self.0 = self.0.header(key, val);
+
+                self
+            }
+            fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error> {
+                let rv = self.0.build()?;
+                Ok(rv)
+            }
+        }
+        let client = reqwest::Client::new();
+        let token = Token::new("key", "secret");
+        let param_list = {
+            let mut hm: ParamList<'_> = HashMap::with_capacity(2);
+            assert!(hm.insert("oauth_any_string".into(), "gets_put_into_auth_header".into()).is_none());
+            assert!(hm.insert("doesnt_start_with_oauth".into(), "doesnt_get_put_into_auth_header".into()).is_none());
+
+            hm
+        };
+        let request = get::<DummyRequestBuilder>(
+            // FIXME: Trailing slash important, otherwise it fails, dunno how to fix
+            "http://localhost/", &token, None, Some(&param_list), &client
+        ).unwrap();
+        assert_eq!(
+            check_signature_request(
+                request,
+                &token.secret,
+                None,
+                |u| Cow::from(u)
+            ).unwrap(),
+            true
+        );
     }
 
     #[test]
