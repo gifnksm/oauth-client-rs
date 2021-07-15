@@ -25,11 +25,13 @@ client-reqwest=["reqwest"]
 reqwest-blocking=["client-reqwest"]
 default=["client-reqwest", "reqwest-blocking"]
 
-
 [dependencies.reqwest]
 optional=true
 version = "0.11.3"
 features = ["blocking"]
+
+[dev-dependencies]
+simple_logger="1"
 
 [badges]
 maintenance = { status = "passively-maintained" }
