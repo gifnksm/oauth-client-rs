@@ -28,22 +28,29 @@
 #![warn(unused_results)]
 #![allow(unused_doc_comments)]
 
-use http::{HeaderValue, StatusCode, header::{AUTHORIZATION, CONTENT_TYPE, HeaderName}};
+use http::{
+    header::{HeaderName, AUTHORIZATION, CONTENT_TYPE},
+    HeaderValue, StatusCode,
+};
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 use lazy_static::lazy_static;
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
-use reqwest::{
-    blocking::{Client, RequestBuilder},
-};
-#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
-use url::Url;
-use std::str::FromStr;
+use reqwest::blocking::{Client, RequestBuilder};
 use ring::hmac;
-use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io::{self, Read}, iter};
+use std::str::FromStr;
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    convert::TryFrom,
+    io::{self, Read},
+    iter,
+};
 use thiserror::Error;
 use time::OffsetDateTime;
+#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
+use url::Url;
 
 /// Result type.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -96,9 +103,9 @@ impl<'a> Token<'a> {
     /// let consumer = oauth_client::Token::new("key", "secret");
     /// ```
     pub fn new<K, S>(key: K, secret: S) -> Token<'a>
-        where
-            K: Into<Cow<'a, str>>,
-            S: Into<Cow<'a, str>>,
+    where
+        K: Into<Cow<'a, str>>,
+        S: Into<Cow<'a, str>>,
     {
         Token {
             key: key.into(),
@@ -111,9 +118,9 @@ impl<'a> Token<'a> {
 pub type ParamList<'a> = HashMap<Cow<'a, str>, Cow<'a, str>>;
 
 fn insert_param<'a, K, V>(param: &mut ParamList<'a>, key: K, value: V) -> Option<Cow<'a, str>>
-    where
-        K: Into<Cow<'a, str>>,
-        V: Into<Cow<'a, str>>,
+where
+    K: Into<Cow<'a, str>>,
+    V: Into<Cow<'a, str>>,
 {
     param.insert(key.into(), value.into())
 }
@@ -181,7 +188,7 @@ pub enum VerifyError {
 
     /// Invalid params
     #[error("Invalid key value pair in query params")]
-    InvalidKeyValuePair
+    InvalidKeyValuePair,
 }
 
 /// Generic request type. Allows you to pass any [`reqwest::Request`]-like object.
@@ -198,7 +205,7 @@ pub trait GenericRequest {
     fn method(&self) -> &str;
 }
 
-#[cfg(feature="client-reqwest")]
+#[cfg(feature = "client-reqwest")]
 impl GenericRequest for reqwest::Request {
     fn headers(&self) -> &http::header::HeaderMap<HeaderValue> {
         self.headers()
@@ -228,7 +235,7 @@ pub fn check_signature_request<R: GenericRequest>(
     request: R,
     consumer_secret: &str,
     token_secret: Option<&str>,
-    mut url_middleware: impl FnMut(&str) -> Cow<str>
+    mut url_middleware: impl FnMut(&str) -> Cow<str>,
 ) -> Result<bool, VerifyError> {
     let authorization_header = request
         .headers()
@@ -236,34 +243,37 @@ pub fn check_signature_request<R: GenericRequest>(
         .ok_or(VerifyError::NoAuthorizationHeader)?;
     dbg!(&authorization_header);
 
-    let (provided_signature, mut auth_params_without_signature): (
-        Vec<&str>,
-        Vec<&str>,
-    ) = authorization_header
-        .to_str()
-        .map_err(|e| VerifyError::NonASCIIHeader(e))?
-        .split(",")
-        .map(str::trim)
-        .partition(|x| x.starts_with("oauth_signature="));
+    let (provided_signature, mut auth_params_without_signature): (Vec<&str>, Vec<&str>) =
+        authorization_header
+            .to_str()
+            .map_err(|e| VerifyError::NonASCIIHeader(e))?
+            .split(",")
+            .map(str::trim)
+            .partition(|x| x.starts_with("oauth_signature="));
     dbg!(&provided_signature, &auth_params_without_signature);
 
-    assert_eq!(provided_signature.len(), 1, "provided_signature: {:?}", provided_signature);
+    assert_eq!(
+        provided_signature.len(),
+        1,
+        "provided_signature: {:?}",
+        provided_signature
+    );
     let provided_signature = provided_signature.first().unwrap();
-    let all_other_max = auth_params_without_signature.len()  - 1;
+    let all_other_max = auth_params_without_signature.len() - 1;
     let mut all_together_max = all_other_max;
     let mut query_params = None;
     let mut url = request.url();
     if let Some(qm_i) = request.url().rfind('?') {
         // Strip query params from url
         url = &url[..qm_i];
-        let qp = request.url()[qm_i+1..].split('&').collect::<Vec<&str>>();
+        let qp = request.url()[qm_i + 1..].split('&').collect::<Vec<&str>>();
         all_together_max += qp.len();
         query_params = Some(qp);
     }
     fn split_key_value_pair(qp: &str) -> Result<(&str, &str), VerifyError> {
         qp.split_once('=')
             .ok_or(VerifyError::InvalidKeyValuePair)
-            .map(|(k,v)| (k,v))
+            .map(|(k, v)| (k, v))
     }
     // First one starts with "OAuth oauth_callback=..."
     auth_params_without_signature[0] = &auth_params_without_signature[0]["OAuth ".len()..];
@@ -282,17 +292,18 @@ pub fn check_signature_request<R: GenericRequest>(
         )
         .collect();
     let mut query = query?;
-    query.sort_by(|(a,_), (b, _)| a.cmp(b));
+    query.sort_by(|(a, _), (b, _)| a.cmp(b));
 
-    let query: String = query.iter()
+    let query: String = query
+        .iter()
         .enumerate()
         .flat_map(|(i, (k, v))| {
             if i > all_other_max {
                 // Url query params don't have quotes around them
-                [k, "=", v, if i == all_together_max {&""} else {&"&"}]
+                [k, "=", v, if i == all_together_max { &"" } else { &"&" }]
             } else {
                 // Other ones do have quotes around them
-                [k, "=", v, if i == all_together_max {&""} else {&"&"}]
+                [k, "=", v, if i == all_together_max { &"" } else { &"&" }]
             }
         })
         .collect();
@@ -302,17 +313,14 @@ pub fn check_signature_request<R: GenericRequest>(
     let url = url_middleware(url);
     dbg!(&url);
 
-    return Ok(
-        check_signature(
-            &provided_signature
-                ["oauth_signature=\"".len()..provided_signature.len() - 1],
-            request.method(),
-            &url,
-            &query,
-            consumer_secret,
-            token_secret
-        )
-    );
+    return Ok(check_signature(
+        &provided_signature["oauth_signature=\"".len()..provided_signature.len() - 1],
+        request.method(),
+        &url,
+        &query,
+        consumer_secret,
+        token_secret,
+    ));
 }
 
 /// Checks if the signature created by the given request data is the same
@@ -329,19 +337,12 @@ pub fn check_signature(
     token_secret: Option<&str>,
 ) -> bool {
     dbg!(&signature_to_check);
-    let signature = signature(
-        method,
-        uri,
-        query,
-        consumer_secret,
-        token_secret,
-    );
+    let signature = signature(method, uri, query, consumer_secret, token_secret);
     let new_encoded_signature = encode(&signature);
     dbg!(&new_encoded_signature);
 
     new_encoded_signature == signature_to_check
 }
-
 
 /// Construct plain-text header.
 ///
@@ -454,9 +455,7 @@ pub fn get<RB: RequestBuildah>(
     other_param: Option<&ParamList<'_>>,
     client: &RB::ClientBuilder,
 ) -> Result<RB::ReturnValue, RB::Error> {
-    let (header, body) = get_header(
-        "GET", uri, consumer, token, other_param,
-    );
+    let (header, body) = get_header("GET", uri, consumer, token, other_param);
     let req_uri = if !body.is_empty() {
         format!("{}?{}", uri, body)
     } else {
@@ -488,17 +487,13 @@ pub fn post<RB: RequestBuildah>(
     other_param: Option<&ParamList<'_>>,
     client: &RB::ClientBuilder,
 ) -> Result<RB::ReturnValue, RB::Error> {
-    let (header, body) = get_header(
-        "POST", uri, consumer, token, other_param,
-    );
+    let (header, body) = get_header("POST", uri, consumer, token, other_param);
 
-    Ok(
-        RB::new(http::Method::POST, uri, client)
-            .body(body)
-            .header(AUTHORIZATION, header)
-            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-            .send()?
-    )
+    Ok(RB::new(http::Method::POST, uri, client)
+        .body(body)
+        .header(AUTHORIZATION, header)
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .send()?)
 }
 
 /// Default one to use if you're not using a custom HTTP Client
@@ -516,9 +511,7 @@ impl RequestBuildah for DefaultRequestBuilder {
     /// If the url is wrong then it will fail only during send
     fn new(method: http::Method, url: &'_ str, _: &Self::ClientBuilder) -> Self {
         let rb = CLIENT.request(method, Url::from_str(url).unwrap());
-        Self {
-            inner: rb
-        }
+        Self { inner: rb }
     }
 
     fn body(mut self, b: String) -> Self {
@@ -528,11 +521,11 @@ impl RequestBuildah for DefaultRequestBuilder {
     }
 
     fn header<K, V>(mut self, key: K, val: V) -> Self
-        where
-            HeaderName: TryFrom<K>,
-            HeaderValue: TryFrom<V>,
-            <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
-            <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
+    where
+        HeaderName: TryFrom<K>,
+        HeaderValue: TryFrom<V>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
         self.inner = self.inner.header(key, val);
 
@@ -571,16 +564,15 @@ pub trait RequestBuildah {
 
     /// Set a header
     fn header<K, V>(self, key: K, val: V) -> Self
-        where
-            HeaderName: TryFrom<K>,
-            HeaderValue: TryFrom<V>,
-            <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
-            <HeaderValue as TryFrom<V>>::Error: Into<http::Error>;
+    where
+        HeaderName: TryFrom<K>,
+        HeaderValue: TryFrom<V>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>;
 
     /// A `build`-like function that also sends the request
     fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error>;
 }
-
 
 #[macro_export]
 /// Counts number of var-args
@@ -605,8 +597,8 @@ pub enum ParseQueryError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use log::LevelFilter;
+    use std::collections::HashMap;
 
     #[test]
     fn macro_rulez_dont_sort_doesnt_sort() {
@@ -645,8 +637,8 @@ mod tests {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
                 ParseQueryError::NotEnoughPairs(_) => {}
-                _ => panic!("Wrong error")
-            }
+                _ => panic!("Wrong error"),
+            },
         }
     }
 
@@ -660,8 +652,8 @@ mod tests {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
                 ParseQueryError::NotEnoughPairs(_) => {}
-                _ => panic!("Wrong error")
-            }
+                _ => panic!("Wrong error"),
+            },
         }
     }
 
@@ -672,14 +664,17 @@ mod tests {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
                 ParseQueryError::InvalidKeyValuePair => {}
-                _ => panic!("Wrong error")
-            }
+                _ => panic!("Wrong error"),
+            },
         }
     }
 
     #[test]
     fn check_signature_request_test() {
-        simple_logger::SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();
+        simple_logger::SimpleLogger::new()
+            .with_level(LevelFilter::Trace)
+            .init()
+            .unwrap();
         struct DummyRequestBuilder(reqwest::RequestBuilder);
 
         impl RequestBuildah for DummyRequestBuilder {
@@ -688,9 +683,7 @@ mod tests {
             type ClientBuilder = reqwest::Client;
 
             fn new(method: http::Method, url: &'_ str, client: &Self::ClientBuilder) -> Self {
-                Self(
-                    client.request(method, url)
-                )
+                Self(client.request(method, url))
             }
             fn body(mut self, b: String) -> Self {
                 self.0 = self.0.body(b);
@@ -698,11 +691,11 @@ mod tests {
                 self
             }
             fn header<K, V>(mut self, key: K, val: V) -> Self
-                where
-                    HeaderName: TryFrom<K>,
-                    HeaderValue: TryFrom<V>,
-                    <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
-                    <HeaderValue as TryFrom<V>>::Error: Into<http::Error>
+            where
+                HeaderName: TryFrom<K>,
+                HeaderValue: TryFrom<V>,
+                <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+                <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
             {
                 self.0 = self.0.header(key, val);
 
@@ -717,23 +710,35 @@ mod tests {
         let token = Token::new("key", "secret");
         let param_list = {
             let mut hm: ParamList<'_> = HashMap::with_capacity(2);
-            assert!(hm.insert("oauth_any_string".into(), "gets_put_into_auth_header".into()).is_none());
-            assert!(hm.insert("doesnt_start_with_oauth".into(), "doesnt_get_put_into_auth_header".into()).is_none());
-            assert!(hm.insert("oauth_callback".into(), "http://xd.xy?xy=xz&xd=xx".into()).is_none());
+            assert!(hm
+                .insert(
+                    "oauth_any_string".into(),
+                    "gets_put_into_auth_header".into()
+                )
+                .is_none());
+            assert!(hm
+                .insert(
+                    "doesnt_start_with_oauth".into(),
+                    "doesnt_get_put_into_auth_header".into()
+                )
+                .is_none());
+            assert!(hm
+                .insert("oauth_callback".into(), "http://xd.xy?xy=xz&xd=xx".into())
+                .is_none());
 
             hm
         };
         let request = get::<DummyRequestBuilder>(
             // FIXME: Trailing slash important, otherwise it fails, dunno how to fix
-            "http://localhost/", &token, None, Some(&param_list), &client
-        ).unwrap();
+            "http://localhost/",
+            &token,
+            None,
+            Some(&param_list),
+            &client,
+        )
+        .unwrap();
         assert_eq!(
-            check_signature_request(
-                request,
-                &token.secret,
-                None,
-                |u| Cow::from(u)
-            ).unwrap(),
+            check_signature_request(request, &token.secret, None, |u| Cow::from(u)).unwrap(),
             true
         );
     }
@@ -759,9 +764,9 @@ mod tests {
             "oauth_timestamp=1471445561&",
             "oauth_version=1.0",
         ]
-            .iter()
-            .cloned()
-            .collect::<String>();
+        .iter()
+        .cloned()
+        .collect::<String>();
         let encoded_query = [
             "oauth_consumer_key%3Dkey%26",
             "oauth_nonce%3Ds6HGl3GhmsDsmpgeLo6lGtKs7rQEzzsA%26",
@@ -769,9 +774,9 @@ mod tests {
             "oauth_timestamp%3D1471445561%26",
             "oauth_version%3D1.0",
         ]
-            .iter()
-            .cloned()
-            .collect::<String>();
+        .iter()
+        .cloned()
+        .collect::<String>();
 
         assert_eq!(encode(method), "GET");
         assert_eq!(encode(uri), encoded_uri);
