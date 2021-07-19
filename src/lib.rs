@@ -77,7 +77,7 @@ pub enum Error {
 
     #[cfg(not(feature = "client-reqwest"))]
     #[error("other error: {0}")]
-    CustomHTTPError(#[from] Box<dyn std::error::Error>),
+    CustomHttpError(#[from] Box<dyn std::error::Error>),
 }
 
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
@@ -184,7 +184,7 @@ pub enum VerifyError {
 
     /// Invalid header
     #[error("Non ASCII values in header: {0}")]
-    NonASCIIHeader(#[source] http::header::ToStrError),
+    NonAsciiHeader(#[source] http::header::ToStrError),
 
     /// Invalid params
     #[error("Invalid key value pair in query params")]
@@ -246,7 +246,7 @@ pub fn check_signature_request<R: GenericRequest>(
     let (provided_signature, mut auth_params_without_signature): (Vec<&str>, Vec<&str>) =
         authorization_header
             .to_str()
-            .map_err(|e| VerifyError::NonASCIIHeader(e))?
+            .map_err(|e| VerifyError::NonAsciiHeader(e))?
             .split(",")
             .map(str::trim)
             .partition(|x| x.starts_with("oauth_signature="));
