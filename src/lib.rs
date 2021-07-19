@@ -602,13 +602,6 @@ pub trait RequestBuildah {
     fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error>;
 }
 
-#[macro_export]
-/// Counts number of var-args
-macro_rules! count {
-    () => (0usize);
-    ( $x:tt $($xs:tt)* ) => (1usize + $crate::count!($($xs)*));
-}
-
 /// Errors possible while using [`parse_query_string`]!.
 #[derive(Debug, Error)]
 pub enum ParseQueryError {
@@ -813,6 +806,14 @@ mod tests {
 }
 
 use log::warn;
+
+#[doc(hidden)]
+#[macro_export]
+/// Counts number of var-args
+macro_rules! count {
+    () => (0usize);
+    ( $x:tt $($xs:tt)* ) => (1usize + $crate::count!($($xs)*));
+}
 
 /// Assumptions:
 /// 1. Keys are distinct
