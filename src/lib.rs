@@ -32,25 +32,19 @@ use http::{
     header::{HeaderName, AUTHORIZATION, CONTENT_TYPE},
     HeaderValue, StatusCode,
 };
-#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
-use lazy_static::lazy_static;
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
-#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
-use reqwest::blocking::{Client, RequestBuilder};
 use ring::hmac;
-use std::str::FromStr;
-use std::{
-    borrow::Cow,
-    collections::HashMap,
-    convert::TryFrom,
-    io::{self, Read},
-    iter,
-};
+use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io, iter};
 use thiserror::Error;
 use time::OffsetDateTime;
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
-use url::Url;
+use ::{
+    lazy_static::lazy_static,
+    reqwest::blocking::{Client, RequestBuilder},
+    std::{io::Read, str::FromStr},
+    url::Url,
+};
 
 /// Result type.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -67,14 +61,17 @@ pub enum Error {
     /// An error happening due to a HTTP status error.
     #[error("HTTP status error code: {0}")]
     HttpStatus(StatusCode),
+
     /// An error happening due to a IO error.
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
+
     /// An error happening due to a reqwest error.
     #[cfg(feature = "client-reqwest")]
     #[error("reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
 
+    /// Custom error you can return if not using [`reqwest`]
     #[cfg(not(feature = "client-reqwest"))]
     #[error("other error: {0}")]
     CustomHttpError(#[from] Box<dyn std::error::Error>),
@@ -128,7 +125,7 @@ where
 fn join_query(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
-        .map(|(k, v)| format!("{}={}", encode(&k), encode(&v)))
+        .map(|(k, v)| format!("{}={}", encode(k), encode(v)))
         .collect::<Vec<_>>();
     pairs.sort();
     pairs.join("&")
@@ -174,7 +171,6 @@ pub fn signature(
 }
 
 /// Things that can go wrong while verifying a request's signature
-#[cfg(feature = "client-reqwest")]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum VerifyError {
@@ -245,8 +241,8 @@ pub fn check_signature_request<R: GenericRequest>(
     let (provided_signature, mut auth_params_without_signature): (Vec<&str>, Vec<&str>) =
         authorization_header
             .to_str()
-            .map_err(|e| VerifyError::NonAsciiHeader(e))?
-            .split(",")
+            .map_err(VerifyError::NonAsciiHeader)?
+            .split(',')
             .map(str::trim)
             .partition(|x| x.starts_with("oauth_signature="));
 
@@ -295,15 +291,7 @@ pub fn check_signature_request<R: GenericRequest>(
     let query: String = query
         .iter()
         .enumerate()
-        .flat_map(|(i, (k, v))| {
-            if i > all_other_max {
-                // Url query params don't have quotes around them
-                [k, "=", v, if i == all_together_max { &"" } else { &"&" }]
-            } else {
-                // Other ones do have quotes around them
-                [k, "=", v, if i == all_together_max { &"" } else { &"&" }]
-            }
-        })
+        .flat_map(|(i, (k, v))| [k, "=", v, if i == all_together_max { &"" } else { &"&" }])
         .collect();
 
     // Fix the url provided by reqwest::Request, e.g. being `localhost` instead of `127.0.0.1`
@@ -345,7 +333,7 @@ fn header(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
         .filter(|&(k, _)| k.starts_with("oauth_"))
-        .map(|(k, v)| format!("{}=\"{}\"", k, encode(&v)))
+        .map(|(k, v)| format!("{}=\"{}\"", k, encode(v)))
         .collect::<Vec<_>>();
     pairs.sort();
     format!("OAuth {}", pairs.join(", "))
@@ -356,7 +344,7 @@ fn body(param: &ParamList<'_>) -> String {
     let mut pairs = param
         .iter()
         .filter(|&(k, _)| !k.starts_with("oauth_"))
-        .map(|(k, v)| format!("{}={}", k, encode(&v)))
+        .map(|(k, v)| format!("{}={}", k, encode(v)))
         .collect::<Vec<_>>();
     pairs.sort();
     pairs.join("&")
@@ -456,7 +444,7 @@ pub fn get<RB: RequestBuildah>(
         uri.to_string()
     };
 
-    let rsp = RB::new(http::Method::GET, &req_uri, &client)
+    let rsp = RB::new(http::Method::GET, &req_uri, client)
         .header(AUTHORIZATION, header)
         .send()?;
     Ok(rsp)
@@ -483,11 +471,11 @@ pub fn post<RB: RequestBuildah>(
 ) -> Result<RB::ReturnValue, RB::Error> {
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
 
-    Ok(RB::new(http::Method::POST, uri, client)
+    RB::new(http::Method::POST, uri, client)
         .body(body)
         .header(AUTHORIZATION, header)
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .send()?)
+        .send()
 }
 
 /// Default one to use if you're not using a custom HTTP Client
