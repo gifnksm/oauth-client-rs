@@ -32,6 +32,7 @@ features = ["blocking"]
 
 [dev-dependencies]
 simple_logger="1"
+tokio={version="1",features=["rt", "macros"]}
 
 [badges]
 maintenance = { status = "passively-maintained" }
