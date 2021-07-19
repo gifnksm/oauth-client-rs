@@ -241,7 +241,6 @@ pub fn check_signature_request<R: GenericRequest>(
         .headers()
         .get("Authorization")
         .ok_or(VerifyError::NoAuthorizationHeader)?;
-    dbg!(&authorization_header);
 
     let (provided_signature, mut auth_params_without_signature): (Vec<&str>, Vec<&str>) =
         authorization_header
@@ -250,7 +249,6 @@ pub fn check_signature_request<R: GenericRequest>(
             .split(",")
             .map(str::trim)
             .partition(|x| x.starts_with("oauth_signature="));
-    dbg!(&provided_signature, &auth_params_without_signature);
 
     assert_eq!(
         provided_signature.len(),
@@ -307,11 +305,9 @@ pub fn check_signature_request<R: GenericRequest>(
             }
         })
         .collect();
-    dbg!(&query);
 
     // Fix the url provided by reqwest::Request, e.g. being `localhost` instead of `127.0.0.1`
     let url = url_middleware(url);
-    dbg!(&url);
 
     return Ok(check_signature(
         &provided_signature["oauth_signature=\"".len()..provided_signature.len() - 1],
@@ -336,10 +332,8 @@ pub fn check_signature(
     consumer_secret: &str,
     token_secret: Option<&str>,
 ) -> bool {
-    dbg!(&signature_to_check);
     let signature = signature(method, uri, query, consumer_secret, token_secret);
     let new_encoded_signature = encode(&signature);
-    dbg!(&new_encoded_signature);
 
     new_encoded_signature == signature_to_check
 }
