@@ -222,11 +222,57 @@ impl GenericRequest for reqwest::Request {
     }
 }
 
-/// Arguments
-/// - request
-/// - consumer_secret
-/// - token_secret
-/// - url_middleware - in case you want to fix localhost urls, etc.
+/// Verifies that the provided request's signature is valid.
+/// The `url_middleware` argument allows you to modify the url before it's used to calculate the
+/// signature. This could be useful for tests, where there can be multiple `localhost` urls.
+///
+/// # Examples
+///
+/// ```
+/// # use std::borrow::Cow;
+/// # use oauth_client::{RequestBuildah, Token};
+/// # use oauth_client::reqwest::header::{HeaderName, HeaderValue};
+/// # use std::convert::TryFrom;
+/// struct DummyRequestBuilder(reqwest::RequestBuilder);
+///
+/// impl RequestBuildah for DummyRequestBuilder {
+///     type Error = reqwest::Error;
+///     type ReturnValue = reqwest::Request;
+///     type ClientBuilder = reqwest::Client;
+///
+///     fn new(method: http::Method, url: &'_ str, client: &Self::ClientBuilder) -> Self {
+///         Self(client.request(method, url))
+///     }
+///     fn body(mut self, b: String) -> Self {
+///         self.0 = self.0.body(b); self
+///     }
+///     fn header<K, V>(mut self, key: K, val: V) -> Self
+///         where
+///             HeaderName: TryFrom<K>,
+///             HeaderValue: TryFrom<V>,
+///             <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+///             <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
+///     {
+///         self.0 = self.0.header(key, val); self
+///     }
+///     fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error> {
+///         self.0.build()
+///     }
+/// }
+/// let client = reqwest::Client::new();
+/// let token = Token::new("key", "secret");
+/// let request = oauth_client::get::<DummyRequestBuilder>(
+///     "http://localhost/",
+///     &token,
+///     None,
+///     None,
+///     &client,
+/// ).unwrap();
+/// assert!(
+///     oauth_client::check_signature_request(request, &token.secret, None, |u| Cow::from(u)).unwrap(),
+///     "Invalid signature"
+/// );
+/// ```
 pub fn check_signature_request<R: GenericRequest>(
     request: R,
     consumer_secret: &str,
