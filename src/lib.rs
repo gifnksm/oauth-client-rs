@@ -816,14 +816,18 @@ mod tests {
 
 use log::warn;
 
+/// Utility function to parse the `Authorization` header from an HTTP request.
+///
 /// Assumptions:
 /// 1. Keys are distinct
-/// 2. `warn!` is in scope, either from `log` or `tracing` etc.
 ///
 /// Arguments:
-/// 1. &str Key to search
-/// 2. bool Whether to (unstable-y) sort the return value (for reproducibility)
-/// 3+. Variadic! `&str` The names of the keys. (If put more than existing, or invalid then error might happen
+/// 1. Key to search
+/// 2. Whether to sort the return value (for reproducibility).
+///
+///    Set to true if in doubt. If the server changes its order of arguments you'll be fine.
+///
+/// 3. The names of the keys. (If put more than existing, or invalid then error might happen
 ///    because we are looking for all provided keys.)
 pub fn parse_query_string<'q, const N: usize>(
     query_string: &'q str,
