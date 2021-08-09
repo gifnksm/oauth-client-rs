@@ -10,13 +10,14 @@ mod api {
     pub const REQUEST_TOKEN: &str = "http://oauthbin.com/v1/request-token";
 }
 
+#[derive(Debug)]
 pub struct AsyncRequestBuilder {
     inner: RequestBuilder,
 }
 
 impl RequestBuildah for AsyncRequestBuilder {
-    type Error = reqwest::Error;
-    type ReturnValue = tokio::task::JoinHandle<Result<String, Self::Error>>;
+    type HttpRequestError = reqwest::Error;
+    type ReturnValue = tokio::task::JoinHandle<Result<String, oauth_client::Error<Self>>>;
     type ClientBuilder = Client;
 
     fn new(method: Method, url: &'_ str, client: &Self::ClientBuilder) -> Self {
@@ -43,7 +44,7 @@ impl RequestBuildah for AsyncRequestBuilder {
         self
     }
 
-    fn send(self) -> Result<Self::ReturnValue, Self::Error> {
+    fn send(self) -> Result<Self::ReturnValue, oauth_client::Error<Self>> {
         Ok(tokio::spawn(async {
             Ok(self.inner.send().await?.error_for_status()?.text().await?)
         }))

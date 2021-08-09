@@ -46,9 +46,6 @@ use ::{
     url::Url,
 };
 
-/// Result type.
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
 #[cfg(feature = "client-reqwest")]
 /// Re-exporting `reqwest` crate.
 pub use reqwest;
@@ -57,7 +54,10 @@ use std::fmt::Debug;
 /// Error type.
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum Error<B>
+where
+    B: RequestBuildah,
+{
     /// An error happening due to a HTTP status error.
     #[error("HTTP status error code: {0}")]
     HttpStatus(StatusCode),
@@ -66,15 +66,19 @@ pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
 
-    /// An error happening due to a reqwest error.
-    #[cfg(feature = "client-reqwest")]
-    #[error("reqwest error: {0}")]
-    Reqwest(#[from] reqwest::Error),
+    /// An error happening due to a HTTP request error.
+    #[error("HTTP request error: {0}")]
+    HttpRequest(B::HttpRequestError),
+}
 
-    /// Custom error you can return if not using [`reqwest`]
-    #[cfg(not(feature = "client-reqwest"))]
-    #[error("other error: {0}")]
-    CustomHttpError(#[from] Box<dyn std::error::Error>),
+#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
+impl<B> From<reqwest::Error> for Error<B>
+where
+    B: RequestBuildah<HttpRequestError = reqwest::Error>,
+{
+    fn from(e: reqwest::Error) -> Self {
+        Self::HttpRequest(e)
+    }
 }
 
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
@@ -230,13 +234,14 @@ impl GenericRequest for reqwest::Request {
 ///
 /// ```
 /// # use std::borrow::Cow;
-/// # use oauth_client::{RequestBuildah, Token};
+/// # use oauth_client::{Error, RequestBuildah, Token};
 /// # use oauth_client::reqwest::header::{HeaderName, HeaderValue};
 /// # use std::convert::TryFrom;
+/// #[derive(Debug)]
 /// struct DummyRequestBuilder(reqwest::RequestBuilder);
 ///
 /// impl RequestBuildah for DummyRequestBuilder {
-///     type Error = reqwest::Error;
+///     type HttpRequestError = reqwest::Error;
 ///     type ReturnValue = reqwest::Request;
 ///     type ClientBuilder = reqwest::Client;
 ///
@@ -255,8 +260,8 @@ impl GenericRequest for reqwest::Request {
 ///     {
 ///         self.0 = self.0.header(key, val); self
 ///     }
-///     fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error> {
-///         self.0.build()
+///     fn send(self) -> Result<Self::ReturnValue, Error<Self>> {
+///         Ok(self.0.build()?)
 ///     }
 /// }
 /// let client = reqwest::Client::new();
@@ -482,7 +487,7 @@ pub fn get<RB: RequestBuildah>(
     token: Option<&Token<'_>>,
     other_param: Option<&ParamList<'_>>,
     client: &RB::ClientBuilder,
-) -> Result<RB::ReturnValue, RB::Error> {
+) -> Result<RB::ReturnValue, Error<RB>> {
     let (header, body) = get_header("GET", uri, consumer, token, other_param);
     let req_uri = if !body.is_empty() {
         format!("{}?{}", uri, body)
@@ -514,7 +519,7 @@ pub fn post<RB: RequestBuildah>(
     token: Option<&Token<'_>>,
     other_param: Option<&ParamList<'_>>,
     client: &RB::ClientBuilder,
-) -> Result<RB::ReturnValue, RB::Error> {
+) -> Result<RB::ReturnValue, Error<RB>> {
     let (header, body) = get_header("POST", uri, consumer, token, other_param);
 
     RB::new(http::Method::POST, uri, client)
@@ -527,13 +532,14 @@ pub fn post<RB: RequestBuildah>(
 /// Default one to use if you're not using a custom HTTP Client
 /// and are ok with bundling reqwest
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
+#[derive(Debug)]
 pub struct DefaultRequestBuilder {
     inner: RequestBuilder,
 }
 
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 impl RequestBuildah for DefaultRequestBuilder {
-    type Error = Error;
+    type HttpRequestError = reqwest::Error;
     type ReturnValue = String;
     type ClientBuilder = ();
     /// If the url is wrong then it will fail only during send
@@ -560,7 +566,7 @@ impl RequestBuildah for DefaultRequestBuilder {
         self
     }
 
-    fn send(self) -> std::result::Result<Self::ReturnValue, Error> {
+    fn send(self) -> Result<Self::ReturnValue, Error<Self>> {
         let mut response = self.inner.send()?;
         if response.status() != StatusCode::OK {
             return Err(Error::HttpStatus(response.status()));
@@ -573,9 +579,9 @@ impl RequestBuildah for DefaultRequestBuilder {
 
 /// A generic request builder. Allows you to use any HTTP client.
 /// See [`DefaultRequestBuilder`] for one that uses [`reqwest::Client`].
-pub trait RequestBuildah {
-    /// The error produced while sending
-    type Error: Debug;
+pub trait RequestBuildah: Debug {
+    /// The error produced while sending a HTTP request
+    type HttpRequestError: std::error::Error;
 
     /// Generic return value allows you to return a future, allowing the possibility
     /// of using this library in `async` environments.
@@ -599,7 +605,9 @@ pub trait RequestBuildah {
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>;
 
     /// A `build`-like function that also sends the request
-    fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error>;
+    fn send(self) -> Result<Self::ReturnValue, Error<Self>>
+    where
+        Self: Sized;
 }
 
 /// Errors possible while using [`parse_query_string`]!.
@@ -696,10 +704,11 @@ mod tests {
             .with_level(LevelFilter::Trace)
             .init()
             .unwrap();
+        #[derive(Debug)]
         struct DummyRequestBuilder(reqwest::RequestBuilder);
 
         impl RequestBuildah for DummyRequestBuilder {
-            type Error = reqwest::Error;
+            type HttpRequestError = reqwest::Error;
             type ReturnValue = reqwest::Request;
             type ClientBuilder = reqwest::Client;
 
@@ -722,7 +731,7 @@ mod tests {
 
                 self
             }
-            fn send(self) -> std::result::Result<Self::ReturnValue, Self::Error> {
+            fn send(self) -> Result<Self::ReturnValue, Error<Self>> {
                 let rv = self.0.build()?;
                 Ok(rv)
             }
