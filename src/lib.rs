@@ -816,14 +816,6 @@ mod tests {
 
 use log::warn;
 
-#[doc(hidden)]
-#[macro_export]
-/// Counts number of var-args
-macro_rules! count {
-    () => (0usize);
-    ( $x:tt $($xs:tt)* ) => (1usize + $crate::count!($($xs)*));
-}
-
 /// Assumptions:
 /// 1. Keys are distinct
 /// 2. `warn!` is in scope, either from `log` or `tracing` etc.
