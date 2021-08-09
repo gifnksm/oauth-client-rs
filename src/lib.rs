@@ -41,7 +41,7 @@ use time::OffsetDateTime;
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 use ::{
     lazy_static::lazy_static,
-    reqwest::blocking::{Client, RequestBuilder},
+    reqwest::blocking::Client,
     std::{io::Read, str::FromStr},
     url::Url,
 };
@@ -56,7 +56,7 @@ use std::fmt::Debug;
 #[non_exhaustive]
 pub enum Error<B>
 where
-    B: RequestBuildah,
+    B: RequestBuilder,
 {
     /// An error happening due to a HTTP status error.
     #[error("HTTP status error code: {0}")]
@@ -74,7 +74,7 @@ where
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 impl<B> From<reqwest::Error> for Error<B>
 where
-    B: RequestBuildah<HttpRequestError = reqwest::Error>,
+    B: RequestBuilder<HttpRequestError = reqwest::Error>,
 {
     fn from(e: reqwest::Error) -> Self {
         Self::HttpRequest(e)
@@ -234,13 +234,13 @@ impl GenericRequest for reqwest::Request {
 ///
 /// ```
 /// # use std::borrow::Cow;
-/// # use oauth_client::{Error, RequestBuildah, Token};
+/// # use oauth_client::{Error, RequestBuilder, Token};
 /// # use oauth_client::reqwest::header::{HeaderName, HeaderValue};
 /// # use std::convert::TryFrom;
 /// #[derive(Debug)]
 /// struct DummyRequestBuilder(reqwest::RequestBuilder);
 ///
-/// impl RequestBuildah for DummyRequestBuilder {
+/// impl RequestBuilder for DummyRequestBuilder {
 ///     type HttpRequestError = reqwest::Error;
 ///     type ReturnValue = reqwest::Request;
 ///     type ClientBuilder = reqwest::Client;
@@ -481,7 +481,7 @@ pub fn authorization_header(
 /// let consumer = oauth_client::Token::new("key", "secret");
 /// let resp = oauth_client::get::<DefaultRequestBuilder>(REQUEST_TOKEN, &consumer, None, None, &()).unwrap();
 /// ```
-pub fn get<RB: RequestBuildah>(
+pub fn get<RB: RequestBuilder>(
     uri: &str,
     consumer: &Token<'_>,
     token: Option<&Token<'_>>,
@@ -513,7 +513,7 @@ pub fn get<RB: RequestBuildah>(
 /// let consumer = oauth_client::Token::new("key", "secret");
 /// let resp = oauth_client::post::<DefaultRequestBuilder>(ACCESS_TOKEN, &consumer, Some(&request), None, &()).unwrap();
 /// ```
-pub fn post<RB: RequestBuildah>(
+pub fn post<RB: RequestBuilder>(
     uri: &str,
     consumer: &Token<'_>,
     token: Option<&Token<'_>>,
@@ -534,11 +534,11 @@ pub fn post<RB: RequestBuildah>(
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
 #[derive(Debug)]
 pub struct DefaultRequestBuilder {
-    inner: RequestBuilder,
+    inner: reqwest::blocking::RequestBuilder,
 }
 
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
-impl RequestBuildah for DefaultRequestBuilder {
+impl RequestBuilder for DefaultRequestBuilder {
     type HttpRequestError = reqwest::Error;
     type ReturnValue = String;
     type ClientBuilder = ();
@@ -579,7 +579,7 @@ impl RequestBuildah for DefaultRequestBuilder {
 
 /// A generic request builder. Allows you to use any HTTP client.
 /// See [`DefaultRequestBuilder`] for one that uses [`reqwest::Client`].
-pub trait RequestBuildah: Debug {
+pub trait RequestBuilder: Debug {
     /// The error produced while sending a HTTP request
     type HttpRequestError: std::error::Error;
 
@@ -707,7 +707,7 @@ mod tests {
         #[derive(Debug)]
         struct DummyRequestBuilder(reqwest::RequestBuilder);
 
-        impl RequestBuildah for DummyRequestBuilder {
+        impl RequestBuilder for DummyRequestBuilder {
             type HttpRequestError = reqwest::Error;
             type ReturnValue = reqwest::Request;
             type ClientBuilder = reqwest::Client;

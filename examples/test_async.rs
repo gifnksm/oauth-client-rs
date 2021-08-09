@@ -1,7 +1,7 @@
-use oauth_client::{RequestBuildah, Token};
+use oauth_client::{RequestBuilder, Token};
 use reqwest::{
     header::{HeaderName, HeaderValue},
-    Client, Method, RequestBuilder,
+    Client, Method,
 };
 use std::convert::TryFrom;
 use std::error::Error;
@@ -12,10 +12,10 @@ mod api {
 
 #[derive(Debug)]
 pub struct AsyncRequestBuilder {
-    inner: RequestBuilder,
+    inner: reqwest::RequestBuilder,
 }
 
-impl RequestBuildah for AsyncRequestBuilder {
+impl RequestBuilder for AsyncRequestBuilder {
     type HttpRequestError = reqwest::Error;
     type ReturnValue = tokio::task::JoinHandle<Result<String, oauth_client::Error<Self>>>;
     type ClientBuilder = Client;
