@@ -148,8 +148,9 @@ const STRICT_ENCODE_SET: percent_encoding::AsciiSet = percent_encoding::NON_ALPH
     .remove(b'_')
     .remove(b'~');
 
-/// Percent encode string
-pub fn encode(s: &str) -> Cow<str> {
+use self::percent_encode_string as encode;
+/// Percent-encode the string in the manner defined in RFC 3986
+pub fn percent_encode_string(s: &str) -> Cow<str> {
     percent_encoding::percent_encode(s.as_bytes(), &STRICT_ENCODE_SET).collect()
 }
 
