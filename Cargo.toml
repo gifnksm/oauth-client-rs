@@ -17,10 +17,21 @@ ring = "0.16.20"
 time = "0.2.26"
 percent-encoding = "2.1.0"
 thiserror = "1.0.24"
+http = "0.2"
+url = "2"
+
+[features]
+client-reqwest = ["reqwest"]
+reqwest-blocking = ["client-reqwest", "reqwest/blocking"]
+default = ["client-reqwest", "reqwest-blocking"]
 
 [dependencies.reqwest]
+optional = true
 version = "0.11.3"
-features = ["blocking"]
+
+[dev-dependencies]
+simple_logger = "1"
+tokio = {version = "1", features = ["rt", "macros"]}
 
 [badges]
 maintenance = { status = "passively-maintained" }
