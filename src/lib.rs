@@ -178,7 +178,7 @@ pub fn signature(
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum VerifyError {
-    /// No authorizatinon header
+    /// No authorization header
     #[error("Authorization header not found")]
     NoAuthorizationHeader,
 
