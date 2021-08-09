@@ -35,7 +35,7 @@ use http::{
 use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
 use ring::hmac;
-use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io, iter};
+use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io, iter, mem::MaybeUninit};
 use thiserror::Error;
 use time::OffsetDateTime;
 #[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
@@ -610,7 +610,7 @@ pub trait RequestBuilder: Debug {
         Self: Sized;
 }
 
-/// Errors possible while using [`parse_query_string`]!.
+/// Errors possible while using [`parse_query_string`].
 #[derive(Debug, Error)]
 pub enum ParseQueryError {
     /// You provided more keys than there actually were to parse.
@@ -632,7 +632,7 @@ mod tests {
     #[test]
     fn macro_rulez_dont_sort_doesnt_sort() {
         let input = "b=BBB&a=AAA";
-        let [(a_key, a), (b_key, b)] = parse_query_string!(input, false, "a", "b").unwrap();
+        let [(a_key, a), (b_key, b)] = parse_query_string(input, false, &["a", "b"]).unwrap();
         assert_eq!(a_key, "b");
         assert_eq!(b_key, "a");
         assert_eq!(b, "AAA");
@@ -642,7 +642,7 @@ mod tests {
     #[test]
     fn macro_rulez_sort_out_of_order() {
         let input = "b=BBB&a=AAA";
-        let [(a_key, a), (b_key, b)] = parse_query_string!(input, true, "a", "b").unwrap();
+        let [(a_key, a), (b_key, b)] = parse_query_string(input, true, &["a", "b"]).unwrap();
         assert_eq!(a_key, "a");
         assert_eq!(b_key, "b");
         assert_eq!(a, "AAA");
@@ -652,7 +652,7 @@ mod tests {
     #[test]
     fn macro_rulez_sort_already_sorted() {
         let input = "a=AAA&b=BBB";
-        let [(a_key, a), (b_key, b)] = parse_query_string!(input, true, "a", "b").unwrap();
+        let [(a_key, a), (b_key, b)] = parse_query_string(input, true, &["a", "b"]).unwrap();
         assert_eq!(a_key, "a");
         assert_eq!(b_key, "b");
         assert_eq!(a, "AAA");
@@ -662,7 +662,7 @@ mod tests {
     #[test]
     fn macro_rulez_invalid_keys() {
         let input = "a=AAA&b=BBB";
-        match parse_query_string!(input, true, "a", "x") {
+        match parse_query_string(input, true, &["a", "x"]) {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
                 ParseQueryError::NotEnoughPairs(_) => {}
@@ -677,7 +677,7 @@ mod tests {
         assert_eq!("".split('&').collect::<Vec<_>>(), [""]);
         assert_eq!("&".split('&').collect::<Vec<_>>(), ["", ""]);
         assert_eq!(0, "".split_terminator('&').collect::<Vec<_>>().len());
-        match parse_query_string!(input, true, "a", "b") {
+        match parse_query_string(input, true, &["a", "b"]) {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
                 ParseQueryError::NotEnoughPairs(_) => {}
@@ -689,7 +689,7 @@ mod tests {
     #[test]
     fn macro_rulez_invalid_format() {
         let input = "x&";
-        match parse_query_string!(input, true, "x") {
+        match parse_query_string(input, true, &["x"]) {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
                 ParseQueryError::InvalidKeyValuePair => {}
@@ -833,52 +833,45 @@ macro_rules! count {
 /// 2. bool Whether to (unstable-y) sort the return value (for reproducibility)
 /// 3+. Variadic! `&str` The names of the keys. (If put more than existing, or invalid then error might happen
 ///    because we are looking for all provided keys.)
-#[macro_export]
-macro_rules! parse_query_string {
-    ($query:expr, $sort:expr, $( $key:expr ),+) => {
-        {
-            const NUM_KEYS: usize = $crate::count!($($key)*);
+pub fn parse_query_string<'q, const N: usize>(
+    query_string: &'q str,
+    sort: bool,
+    keys: &[&str; N],
+) -> Result<[(&'q str, &'q str); N], ParseQueryError> {
+    // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
+    // safe because the type we are claiming to have initialized here is a
+    // bunch of `MaybeUninit`s, which do not require initialization.
+    let mut rv: [MaybeUninit<(&str, &str)>; N] = unsafe { MaybeUninit::uninit().assume_init() };
 
-            let used_for_question_mark = || -> Result<_, $crate::ParseQueryError> {
-                let mut rv: [Option<(&str, &str)>; NUM_KEYS] = [None; NUM_KEYS];
-                let mut num_inserted = 0;
-                for kv in $query.split_terminator('&') {
-                    let mut iter = kv.split_terminator('=');
-                    let key = iter.next().ok_or($crate::ParseQueryError::InvalidKeyValuePair)?;
-                    let val = iter.next().ok_or($crate::ParseQueryError::InvalidKeyValuePair)?;
+    let mut num_inserted = 0;
+    for kv in query_string.split_terminator('&') {
+        let mut iter = kv.split_terminator('=');
+        let key = iter.next().ok_or(ParseQueryError::InvalidKeyValuePair)?;
+        let val = iter.next().ok_or(ParseQueryError::InvalidKeyValuePair)?;
 
-                    match key {
-                        $($key)|+ => {
-                            rv[num_inserted] = Some((key, val));
-                            num_inserted += 1;
-                        },
-                        key => {
-                            warn!("Unexpected key {:?}. (value {:?})", key, val);
-                        }
-                    }
-                }
-
-                if num_inserted < NUM_KEYS {
-                    return Err(
-                        $crate::ParseQueryError::NotEnoughPairs(num_inserted)
-                    );
-                }
-
-                // SAFETY:
-                //  1. We overwrote all Nones, with actual values.
-                //  2. References are non-null so their size is the same as options.
-                let mut rv: [(&str, &str); NUM_KEYS] = unsafe {
-                    std::mem::transmute::<[Option<(&str, &str)>; NUM_KEYS], [(&str, &str); NUM_KEYS]>(rv)
-                };
-
-                if $sort {
-                    // NOTE: Assumption: keys are distinct
-                    rv.sort_unstable_by_key(|&(k,_v)| k);
-                }
-
-                Ok(rv)
-            };
-            used_for_question_mark()
+        if keys.contains(&key) {
+            // Dropping a `MaybeUninit` does nothing. Thus using element
+            // assignment instead of `ptr::write` does not cause the old
+            // uninitialized value to be dropped.
+            rv[num_inserted] = MaybeUninit::new((key, val));
+            num_inserted += 1;
+        } else {
+            warn!("Unexpected key {:?}. (value {:?})", key, val);
         }
     }
+
+    if num_inserted < N {
+        return Err(ParseQueryError::NotEnoughPairs(num_inserted));
+    }
+
+    // Everything is initialized. Transmute the array to the
+    // initialized type.
+    let mut rv: [(&str, &str); N] = unsafe { std::mem::transmute_copy(&rv) };
+
+    if sort {
+        // NOTE: Assumption: keys are distinct
+        rv.sort_unstable_by_key(|&(k, _v)| k);
+    }
+
+    Ok(rv)
 }
