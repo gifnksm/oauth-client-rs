@@ -630,7 +630,7 @@ mod tests {
     use std::collections::HashMap;
 
     #[test]
-    fn macro_rulez_dont_sort_doesnt_sort() {
+    fn parse_dont_sort_doesnt_sort() {
         let input = "b=BBB&a=AAA";
         let [(a_key, a), (b_key, b)] = parse_query_string(input, false, &["a", "b"]).unwrap();
         assert_eq!(a_key, "b");
@@ -640,7 +640,7 @@ mod tests {
     }
 
     #[test]
-    fn macro_rulez_sort_out_of_order() {
+    fn parse_sort_out_of_order() {
         let input = "b=BBB&a=AAA";
         let [(a_key, a), (b_key, b)] = parse_query_string(input, true, &["a", "b"]).unwrap();
         assert_eq!(a_key, "a");
@@ -650,7 +650,7 @@ mod tests {
     }
 
     #[test]
-    fn macro_rulez_sort_already_sorted() {
+    fn parse_sort_already_sorted() {
         let input = "a=AAA&b=BBB";
         let [(a_key, a), (b_key, b)] = parse_query_string(input, true, &["a", "b"]).unwrap();
         assert_eq!(a_key, "a");
@@ -660,7 +660,7 @@ mod tests {
     }
 
     #[test]
-    fn macro_rulez_invalid_keys() {
+    fn parse_invalid_keys() {
         let input = "a=AAA&b=BBB";
         match parse_query_string(input, true, &["a", "x"]) {
             Ok(_) => panic!("Should error"),
@@ -672,7 +672,7 @@ mod tests {
     }
 
     #[test]
-    fn macro_rulez_empty_string() {
+    fn parse_empty_string() {
         let input = "";
         assert_eq!("".split('&').collect::<Vec<_>>(), [""]);
         assert_eq!("&".split('&').collect::<Vec<_>>(), ["", ""]);
@@ -687,7 +687,7 @@ mod tests {
     }
 
     #[test]
-    fn macro_rulez_invalid_format() {
+    fn parse_invalid_format() {
         let input = "x&";
         match parse_query_string(input, true, &["x"]) {
             Ok(_) => panic!("Should error"),
