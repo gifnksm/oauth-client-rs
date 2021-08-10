@@ -29,8 +29,12 @@ default = ["client-reqwest", "reqwest-blocking"]
 
 [dev-dependencies]
 simple_logger = "1"
-tokio = {version = "1", features = ["rt", "macros"]}
+tokio = { version = "1", features = ["rt", "macros"] }
 oauth-client = { path = ".", features = ["client-reqwest", "reqwest-blocking"] }
 
 [badges]
 maintenance = { status = "passively-maintained" }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

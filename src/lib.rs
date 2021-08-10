@@ -27,6 +27,7 @@
 #![warn(unused_qualifications)]
 #![warn(unused_results)]
 #![allow(unused_doc_comments)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 use http::{
     header::{HeaderName, AUTHORIZATION, CONTENT_TYPE},
@@ -46,8 +47,9 @@ use ::{
     url::Url,
 };
 
-#[cfg(feature = "client-reqwest")]
 /// Re-exporting `reqwest` crate.
+#[cfg(feature = "client-reqwest")]
+#[cfg_attr(docsrs, doc(cfg(feature = "client-reqwest")))]
 pub use reqwest;
 use std::fmt::Debug;
 
@@ -72,6 +74,7 @@ where
 }
 
 #[cfg(feature = "client-reqwest")]
+#[cfg_attr(docsrs, doc(cfg(feature = "client-reqwest")))]
 impl<B> From<reqwest::Error> for Error<B>
 where
     B: RequestBuilder<HttpRequestError = reqwest::Error>,
@@ -207,6 +210,7 @@ pub trait GenericRequest {
 }
 
 #[cfg(feature = "client-reqwest")]
+#[cfg_attr(docsrs, doc(cfg(feature = "client-reqwest")))]
 impl GenericRequest for reqwest::Request {
     fn headers(&self) -> &http::header::HeaderMap<HeaderValue> {
         self.headers()
@@ -533,12 +537,14 @@ pub fn post<RB: RequestBuilder>(
 /// Default one to use if you're not using a custom HTTP Client
 /// and are ok with bundling reqwest
 #[cfg(feature = "reqwest-blocking")]
+#[cfg_attr(docsrs, doc(cfg(feature = "reqwest-blocking")))]
 #[derive(Debug)]
 pub struct DefaultRequestBuilder {
     inner: reqwest::blocking::RequestBuilder,
 }
 
 #[cfg(feature = "reqwest-blocking")]
+#[cfg_attr(docsrs, doc(cfg(feature = "reqwest-blocking")))]
 impl RequestBuilder for DefaultRequestBuilder {
     type HttpRequestError = reqwest::Error;
     type ReturnValue = String;
