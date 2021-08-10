@@ -287,7 +287,7 @@ pub fn check_signature_request<R: GenericRequest>(
     request: R,
     consumer_secret: &str,
     token_secret: Option<&str>,
-    mut url_middleware: impl FnMut(&str) -> Cow<str>,
+    url_middleware: impl for<'a> FnOnce(&'a str) -> Cow<'a, str>,
 ) -> Result<bool, VerifyError> {
     let authorization_header = request
         .headers()
@@ -683,7 +683,7 @@ mod tests {
         let input = "";
         assert_eq!("".split('&').collect::<Vec<_>>(), [""]);
         assert_eq!("&".split('&').collect::<Vec<_>>(), ["", ""]);
-        assert_eq!(0, "".split_terminator('&').collect::<Vec<_>>().len());
+        assert_eq!(0, "".split_terminator('&').count());
         match parse_query_string(input, true, &["a", "b"]) {
             Ok(_) => panic!("Should error"),
             Err(e) => match e {
@@ -774,10 +774,7 @@ mod tests {
             &client,
         )
         .unwrap();
-        assert_eq!(
-            check_signature_request(request, &token.secret, None, |u| Cow::from(u)).unwrap(),
-            true
-        );
+        assert!(check_signature_request(request, &token.secret, None, |u| u.into()).unwrap());
     }
 
     #[test]
