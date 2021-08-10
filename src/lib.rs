@@ -157,7 +157,7 @@ pub fn percent_encode_string(s: &str) -> Cow<str> {
     percent_encoding::percent_encode(s.as_bytes(), &STRICT_ENCODE_SET).collect()
 }
 
-/// Create signature. See https://dev.twitter.com/oauth/overview/creating-signatures
+/// Create signature. See <https://dev.twitter.com/oauth/overview/creating-signatures>
 pub fn signature(
     method: &str,
     uri: &str,
@@ -451,7 +451,7 @@ fn get_header(
 }
 
 /// Create an authorization header.
-/// See https://dev.twitter.com/oauth/overview/authorizing-requests
+/// See <https://dev.twitter.com/oauth/overview/authorizing-requests>
 ///
 /// # Examples
 ///
