@@ -11,24 +11,21 @@ resolver = "2"
 
 [dependencies]
 base64 = "0.13.0"
-lazy_static = "1.4.0"
+lazy_static = { version = "1.4.0", optional = true }
 log = "0.4.14"
 rand = "0.8.3"
 ring = "0.16.20"
 time = "0.2.26"
 percent-encoding = "2.1.0"
+reqwest = { version = "0.11.3", optional = true }
 thiserror = "1.0.24"
 http = "0.2"
-url = "2"
+url = { version = "2", optional = true }
 
 [features]
 client-reqwest = ["reqwest"]
-reqwest-blocking = ["client-reqwest", "reqwest/blocking"]
+reqwest-blocking = ["client-reqwest", "reqwest/blocking", "lazy_static", "url"]
 default = ["client-reqwest", "reqwest-blocking"]
-
-[dependencies.reqwest]
-optional = true
-version = "0.11.3"
 
 [dev-dependencies]
 simple_logger = "1"

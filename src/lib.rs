@@ -38,7 +38,7 @@ use ring::hmac;
 use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io, iter, mem::MaybeUninit};
 use thiserror::Error;
 use time::OffsetDateTime;
-#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
+#[cfg(all(feature = "reqwest-blocking"))]
 use ::{
     lazy_static::lazy_static,
     reqwest::blocking::Client,
@@ -71,7 +71,7 @@ where
     HttpRequest(B::HttpRequestError),
 }
 
-#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
+#[cfg(feature = "client-reqwest")]
 impl<B> From<reqwest::Error> for Error<B>
 where
     B: RequestBuilder<HttpRequestError = reqwest::Error>,
@@ -81,7 +81,7 @@ where
     }
 }
 
-#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
+#[cfg(feature = "reqwest-blocking")]
 lazy_static! {
     static ref CLIENT: Client = Client::new();
 }
@@ -532,13 +532,13 @@ pub fn post<RB: RequestBuilder>(
 
 /// Default one to use if you're not using a custom HTTP Client
 /// and are ok with bundling reqwest
-#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
+#[cfg(feature = "reqwest-blocking")]
 #[derive(Debug)]
 pub struct DefaultRequestBuilder {
     inner: reqwest::blocking::RequestBuilder,
 }
 
-#[cfg(all(feature = "client-reqwest", feature = "reqwest-blocking"))]
+#[cfg(feature = "reqwest-blocking")]
 impl RequestBuilder for DefaultRequestBuilder {
     type HttpRequestError = reqwest::Error;
     type ReturnValue = String;
