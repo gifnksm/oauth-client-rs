@@ -38,3 +38,8 @@ maintenance = { status = "passively-maintained" }
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.release]
+pre-release-replacements = [
+    { file = "README.md", search = "polynomial = \"[0-9\\.]+\"", replace = "{{crate_name}} = \"{{version}}\"" }
+]
