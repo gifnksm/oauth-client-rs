@@ -1,7 +1,7 @@
 # oauth-client-rs
 
 [![maintenance status: passively-maintained](https://img.shields.io/badge/maintenance-passively--maintained-yellowgreen.svg)](https://doc.rust-lang.org/cargo/reference/manifest.html#the-badges-section)
-[![license](https://img.shields.io/crates/l/oauth-client.svg)](LICENSE)
+[![license](https://img.shields.io/crates/l/oauth-client.svg)](#license)
 [![crates.io](https://img.shields.io/crates/v/oauth-client.svg)](https://crates.io/crates/oauth-client)
 [![docs.rs](https://img.shields.io/docsrs/oauth-client/latest)](https://docs.rs/oauth-client/latest/)
 [![rust 1.57.0+ badge](https://img.shields.io/badge/rust-1.57.0+-93450a.svg)](https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field)
