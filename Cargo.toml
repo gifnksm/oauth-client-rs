@@ -41,5 +41,5 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.release]
 pre-release-replacements = [
-    { file = "README.md", search = "polynomial = \"[0-9\\.]+\"", replace = "{{crate_name}} = \"{{version}}\"" }
+    { file = "README.md", search = "oauth-client = \"[0-9\\.]+\"", replace = "{{crate_name}} = \"{{version}}\"" }
 ]
