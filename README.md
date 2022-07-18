@@ -18,7 +18,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oauth-client = "0.6"
+oauth-client = "0.7.0"
 ```
 
 See [examples](./examples).
