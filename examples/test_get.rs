@@ -29,9 +29,7 @@ mod api {
 fn split_query(query: &'_ str) -> HashMap<Cow<'_, str>, Cow<'_, str>> {
     let mut param = HashMap::new();
     for q in query.split('&') {
-        let mut s = q.splitn(2, '=');
-        let k = s.next().unwrap();
-        let v = s.next().unwrap();
+        let (k, v) = q.split_once('=').unwrap();
         let _ = param.insert(k.into(), v.into());
     }
     param
