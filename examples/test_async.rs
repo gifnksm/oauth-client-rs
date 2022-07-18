@@ -16,8 +16,7 @@ pub struct AsyncRequestBuilder {
 }
 
 impl RequestBuilder for AsyncRequestBuilder {
-    type HttpRequestError = reqwest::Error;
-    type ReturnValue = tokio::task::JoinHandle<Result<String, oauth_client::Error<Self>>>;
+    type ReturnValue = tokio::task::JoinHandle<Result<String, oauth_client::Error>>;
     type ClientBuilder = Client;
 
     fn new(method: Method, url: &'_ str, client: &Self::ClientBuilder) -> Self {
@@ -44,7 +43,7 @@ impl RequestBuilder for AsyncRequestBuilder {
         self
     }
 
-    fn send(self) -> Result<Self::ReturnValue, oauth_client::Error<Self>> {
+    fn send(self) -> Result<Self::ReturnValue, oauth_client::Error> {
         Ok(tokio::spawn(async {
             Ok(self.inner.send().await?.error_for_status()?.text().await?)
         }))
