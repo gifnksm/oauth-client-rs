@@ -28,7 +28,7 @@ reqwest-blocking = ["client-reqwest", "reqwest/blocking", "lazy_static", "url"]
 default = ["client-reqwest", "reqwest-blocking"]
 
 [dev-dependencies]
-simple_logger = "2.2.0"
+simple_logger = "4.0.0"
 tokio = { version = "1.20.0", features = ["rt", "macros"] }
 oauth-client = { path = ".", features = ["client-reqwest", "reqwest-blocking"] }
 
