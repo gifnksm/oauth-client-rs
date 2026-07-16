@@ -35,7 +35,7 @@ use http::{
     HeaderValue, StatusCode,
 };
 use log::{debug, warn};
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distr::Alphanumeric, RngExt as _};
 use ring::hmac;
 use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io, iter, mem::MaybeUninit};
 use thiserror::Error;
@@ -408,7 +408,7 @@ fn get_header(
 ) -> (String, String) {
     let mut param = HashMap::new();
     let timestamp = format!("{}", OffsetDateTime::now_utc().unix_timestamp());
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let nonce = iter::repeat(())
         .map(|()| rng.sample(Alphanumeric))
         .map(char::from)

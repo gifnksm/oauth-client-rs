@@ -15,7 +15,8 @@
 )]
 
 use oauth_client::{self as oauth, Token};
-use rand::{distributions::Alphanumeric, Rng};
+use rand::distr::Alphanumeric;
+use rand::RngExt as _;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use std::borrow::Cow;
@@ -82,7 +83,7 @@ fn get_access_token(consumer: &Token<'_>, request: &Token<'_>) -> Token<'static>
 }
 
 fn echo(consumer: &Token<'_>, access: &Token<'_>) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut req_param = HashMap::new();
     let _ = req_param.insert("testFOO".into(), "testFoo".into());
     for _ in 0..2 {
