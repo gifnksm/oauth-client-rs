@@ -29,7 +29,7 @@ default = ["client-reqwest", "reqwest-blocking"]
 
 [dev-dependencies]
 simple_logger = "2.2.0"
-tokio = { version = "1.20.0", features = ["rt", "macros"] }
+tokio = { version = "1.20.0", features = ["rt", "macros", "rt-multi-thread"] }
 oauth-client = { path = ".", features = ["client-reqwest", "reqwest-blocking"] }
 
 [badges]
