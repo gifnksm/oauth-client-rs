@@ -29,6 +29,7 @@
 #![allow(unused_doc_comments)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use http::{
     header::{HeaderName, AUTHORIZATION, CONTENT_TYPE},
     HeaderValue, StatusCode,
@@ -169,7 +170,7 @@ pub fn signature(
     debug!("Authorization header: Authorization: {}", base);
     let signing_key = hmac::Key::new(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, key.as_bytes());
     let signature = hmac::sign(&signing_key, base.as_bytes());
-    base64::encode(signature.as_ref())
+    STANDARD.encode(signature.as_ref())
 }
 
 /// Things that can go wrong while verifying a request's signature
