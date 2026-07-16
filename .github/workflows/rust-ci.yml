@@ -10,7 +10,7 @@ jobs:
     name: Rustfmt Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: actions-rs/toolchain@v1
         with:
             toolchain: stable
@@ -24,7 +24,7 @@ jobs:
     name: Clippy Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Check workflow permissions
         id: check_permissions
         uses: scherermichael-oss/action-has-permission@1.0.6
@@ -54,7 +54,7 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -68,7 +68,7 @@ jobs:
           - stable
           - 1.57.0
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: actions-rs/toolchain@v1
         with:
             toolchain: ${{ matrix.rust }}
@@ -86,7 +86,7 @@ jobs:
           - stable
           - 1.57.0
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: actions-rs/toolchain@v1
         with:
             toolchain: ${{ matrix.rust }}
@@ -99,7 +99,7 @@ jobs:
     name: Code coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
