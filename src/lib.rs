@@ -33,13 +33,13 @@ use http::{
     header::{HeaderName, AUTHORIZATION, CONTENT_TYPE},
     HeaderValue, StatusCode,
 };
-use log::debug;
+use log::{debug, warn};
 use rand::{distributions::Alphanumeric, Rng};
 use ring::hmac;
 use std::{borrow::Cow, collections::HashMap, convert::TryFrom, io, iter, mem::MaybeUninit};
 use thiserror::Error;
 use time::OffsetDateTime;
-#[cfg(all(feature = "reqwest-blocking"))]
+#[cfg(feature = "reqwest-blocking")]
 use ::{
     lazy_static::lazy_static,
     reqwest::blocking::Client,
@@ -147,7 +147,7 @@ const STRICT_ENCODE_SET: percent_encoding::AsciiSet = percent_encoding::NON_ALPH
 
 use self::percent_encode_string as encode;
 /// Percent-encode the string in the manner defined in RFC 3986
-pub fn percent_encode_string(s: &str) -> Cow<str> {
+pub fn percent_encode_string(s: &str) -> Cow<'_, str> {
     percent_encoding::percent_encode(s.as_bytes(), &STRICT_ENCODE_SET).collect()
 }
 
@@ -314,9 +314,7 @@ pub fn check_signature_request<R: GenericRequest>(
         query_params = Some(qp);
     }
     fn split_key_value_pair(qp: &str) -> Result<(&str, &str), VerifyError> {
-        qp.split_once('=')
-            .ok_or(VerifyError::InvalidKeyValuePair)
-            .map(|(k, v)| (k, v))
+        qp.split_once('=').ok_or(VerifyError::InvalidKeyValuePair)
     }
     // First one starts with "OAuth oauth_callback=..."
     auth_params_without_signature[0] = &auth_params_without_signature[0]["OAuth ".len()..];
@@ -335,7 +333,7 @@ pub fn check_signature_request<R: GenericRequest>(
         )
         .collect();
     let mut query = query?;
-    query.sort_by(|(a, _), (b, _)| a.cmp(b));
+    query.sort_by_key(|(a, _)| *a);
 
     let query: String = query
         .iter()
@@ -346,14 +344,14 @@ pub fn check_signature_request<R: GenericRequest>(
     // Fix the url provided by reqwest::Request, e.g. being `localhost` instead of `127.0.0.1`
     let url = url_middleware(url);
 
-    return Ok(check_signature(
+    Ok(check_signature(
         &provided_signature["oauth_signature=\"".len()..provided_signature.len() - 1],
         request.method(),
         &url,
         &query,
         consumer_secret,
         token_secret,
-    ));
+    ))
 }
 
 /// Checks if the signature created by the given request data is the same
@@ -619,6 +617,62 @@ pub enum ParseQueryError {
     InvalidKeyValuePair,
 }
 
+/// Utility function to parse the `Authorization` header from an HTTP request.
+///
+/// Assumptions:
+/// 1. Keys are distinct
+///
+/// Arguments:
+/// 1. Key to search
+/// 2. Whether to sort the return value (for reproducibility).
+///
+///    Set to true if in doubt. If the server changes its order of arguments you'll be fine.
+///
+/// 3. The names of the keys. (If put more than existing, or invalid then error might happen
+///    because we are looking for all provided keys.)
+pub fn parse_query_string<'q, const N: usize>(
+    query_string: &'q str,
+    sort: bool,
+    keys: &[&str; N],
+) -> Result<[(&'q str, &'q str); N], ParseQueryError> {
+    // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
+    // safe because the type we are claiming to have initialized here is a
+    // bunch of `MaybeUninit`s, which do not require initialization.
+    let mut rv: [MaybeUninit<(&str, &str)>; N] = unsafe { MaybeUninit::uninit().assume_init() };
+
+    let mut num_inserted = 0;
+    for kv in query_string.split_terminator('&') {
+        let mut iter = kv.split_terminator('=');
+        let key = iter.next().ok_or(ParseQueryError::InvalidKeyValuePair)?;
+        let val = iter.next().ok_or(ParseQueryError::InvalidKeyValuePair)?;
+
+        if keys.contains(&key) {
+            // Dropping a `MaybeUninit` does nothing. Thus using element
+            // assignment instead of `ptr::write` does not cause the old
+            // uninitialized value to be dropped.
+            rv[num_inserted] = MaybeUninit::new((key, val));
+            num_inserted += 1;
+        } else {
+            warn!("Unexpected key {:?}. (value {:?})", key, val);
+        }
+    }
+
+    if num_inserted < N {
+        return Err(ParseQueryError::NotEnoughPairs(num_inserted));
+    }
+
+    // Everything is initialized. Transmute the array to the
+    // initialized type.
+    let mut rv: [(&str, &str); N] = unsafe { std::mem::transmute_copy(&rv) };
+
+    if sort {
+        // NOTE: Assumption: keys are distinct
+        rv.sort_unstable_by_key(|&(k, _v)| k);
+    }
+
+    Ok(rv)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -804,62 +858,4 @@ mod tests {
         assert_eq!(encode(uri), encoded_uri);
         assert_eq!(encode(&query), encoded_query);
     }
-}
-
-use log::warn;
-
-/// Utility function to parse the `Authorization` header from an HTTP request.
-///
-/// Assumptions:
-/// 1. Keys are distinct
-///
-/// Arguments:
-/// 1. Key to search
-/// 2. Whether to sort the return value (for reproducibility).
-///
-///    Set to true if in doubt. If the server changes its order of arguments you'll be fine.
-///
-/// 3. The names of the keys. (If put more than existing, or invalid then error might happen
-///    because we are looking for all provided keys.)
-pub fn parse_query_string<'q, const N: usize>(
-    query_string: &'q str,
-    sort: bool,
-    keys: &[&str; N],
-) -> Result<[(&'q str, &'q str); N], ParseQueryError> {
-    // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
-    // safe because the type we are claiming to have initialized here is a
-    // bunch of `MaybeUninit`s, which do not require initialization.
-    let mut rv: [MaybeUninit<(&str, &str)>; N] = unsafe { MaybeUninit::uninit().assume_init() };
-
-    let mut num_inserted = 0;
-    for kv in query_string.split_terminator('&') {
-        let mut iter = kv.split_terminator('=');
-        let key = iter.next().ok_or(ParseQueryError::InvalidKeyValuePair)?;
-        let val = iter.next().ok_or(ParseQueryError::InvalidKeyValuePair)?;
-
-        if keys.contains(&key) {
-            // Dropping a `MaybeUninit` does nothing. Thus using element
-            // assignment instead of `ptr::write` does not cause the old
-            // uninitialized value to be dropped.
-            rv[num_inserted] = MaybeUninit::new((key, val));
-            num_inserted += 1;
-        } else {
-            warn!("Unexpected key {:?}. (value {:?})", key, val);
-        }
-    }
-
-    if num_inserted < N {
-        return Err(ParseQueryError::NotEnoughPairs(num_inserted));
-    }
-
-    // Everything is initialized. Transmute the array to the
-    // initialized type.
-    let mut rv: [(&str, &str); N] = unsafe { std::mem::transmute_copy(&rv) };
-
-    if sort {
-        // NOTE: Assumption: keys are distinct
-        rv.sort_unstable_by_key(|&(k, _v)| k);
-    }
-
-    Ok(rv)
 }
