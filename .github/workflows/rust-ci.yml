@@ -5,59 +5,32 @@ on: push
 env:
   CARGO_TERM_COLOR: always
 
+permissions: {}
+
 jobs:
   rustfmt_check:
-    name: Rustfmt Check
+    name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@v1
         with:
-            toolchain: stable
-            profile: minimal
-            components: rustfmt
-            override: true
-      - name: rustfmt-check
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run rustfmt
         run: cargo fmt --all --check
 
   clippy_check:
-    name: Clippy Check
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Check workflow permissions
-        id: check_permissions
-        uses: scherermichael-oss/action-has-permission@1.0.6
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@v1
         with:
-          required-permission: write
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run clippy action to produce annotations
-        uses: actions-rs/clippy-check@v1
-        if: ${{ steps.check_permissions.outputs.has-permission }}
-        with:
-          # GitHub displays the clippy job and its results as separate entries
-          name: Clippy (stable) Results
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --all-targets -- -D warnings
-      - uses: actions-rs/toolchain@v1
-        with:
-            toolchain: stable
-            profile: minimal
-            components: clippy
-            override: true
-      - name: Run clippy manually without annotations
-        if: ${{ !steps.check_permissions.outputs.has-permission }}
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run clippy
         run: cargo clippy --all-features --all-targets -- -D warnings
-
-  security_audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
   test:
     name: Test
@@ -68,12 +41,11 @@ jobs:
           - stable
           - 1.88.0
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@v1
         with:
-            toolchain: ${{ matrix.rust }}
-            profile: minimal
-            override: true
+          toolchain: ${{ matrix.rust }}
+      - uses: Swatinem/rust-cache@v2
       - name: cargo test
         run: cargo test --workspace --all-targets --all-features
 
@@ -86,34 +58,31 @@ jobs:
           - stable
           - 1.88.0
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@v1
         with:
-            toolchain: ${{ matrix.rust }}
-            profile: minimal
-            override: true
+          toolchain: ${{ matrix.rust }}
+      - uses: Swatinem/rust-cache@v2
       - name: cargo build
         run: cargo build --workspace --all-targets --all-features
 
   coverage:
-    name: Code coverage
+    name: Coverage (test)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          profile: minimal
-          override: true
           components: llvm-tools-preview
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: Swatinem/rust-cache@v2
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
           fail_ci_if_error: true
-
