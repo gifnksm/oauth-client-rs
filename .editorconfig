@@ -1,0 +1,30 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.rs]
+# Rust formatting is enforced by rustfmt. Keep indent_size unset here so
+# EditorConfig checks do not fight embedded fixtures in raw strings.
+indent_size = unset
+
+[*.{toml,json,jsonc}]
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+indent_size = unset
+
+[Makefile]
+indent_style = tab
+
+[LICENSE*]
+indent_size = unset
