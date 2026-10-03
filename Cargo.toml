@@ -3,43 +3,40 @@ name = "oauth-client"
 version = "0.8.0"
 edition = "2021"
 rust-version = "1.88.0"
-authors = ["gifnksm <makoto.nksm+github@gmail.com>"]
 description = "OAuth client for Rust"
-license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/gifnksm/oauth-client-rs"
-
-[dependencies]
-base64 = "0.23.1"
-lazy_static = { version = "1.5.0", optional = true }
-log = "0.4.34"
-rand = "0.10.3"
-ring = "0.17.14"
-time = "0.3.55"
-percent-encoding = "2.3.2"
-reqwest = { version = "0.13.5", optional = true }
-thiserror = "2.0.21"
-http = "1.5.0"
-url = { version = "2.5.8", optional = true }
-
-[features]
-client-reqwest = ["reqwest"]
-reqwest-blocking = ["client-reqwest", "reqwest/blocking", "lazy_static", "url"]
-default = ["client-reqwest", "reqwest-blocking"]
-
-[dev-dependencies]
-simple_logger = "5.2.0"
-tokio = { version = "1.53.1", features = ["rt", "macros", "rt-multi-thread"] }
-oauth-client = { path = ".", features = ["client-reqwest", "reqwest-blocking"] }
-
-[badges]
-maintenance = { status = "passively-maintained" }
+license = "MIT OR Apache-2.0"
 
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.release]
-pre-release-replacements = [
-    { file = "README.md", search = "oauth-client = \"[0-9\\.]+\"", replace = "{{crate_name}} = \"{{version}}\"" }
-]
+pre-release-replacements = [{ file = "README.md", search = "oauth-client = \"[0-9\\.]+\"", replace = "{{crate_name}} = \"{{version}}\"" }]
+
+[dependencies]
+base64 = "0.23.1"
+http = "1.5.0"
+lazy_static = { version = "1.5.0", optional = true }
+log = "0.4.34"
+percent-encoding = "2.3.2"
+rand = "0.10.3"
+reqwest = { version = "0.13.5", optional = true }
+ring = "0.17.14"
+thiserror = "2.0.21"
+time = "0.3.55"
+url = { version = "2.5.8", optional = true }
+
+[dev-dependencies]
+oauth-client = { path = ".", features = ["client-reqwest", "reqwest-blocking"] }
+simple_logger = "5.2.0"
+tokio = { version = "1.53.1", features = ["macros", "rt", "rt-multi-thread"] }
+
+[badges]
+maintenance = { status = "passively-maintained" }
+
+[features]
+default = ["client-reqwest", "reqwest-blocking"]
+client-reqwest = ["reqwest"]
+reqwest-blocking = ["client-reqwest", "lazy_static", "reqwest/blocking", "url"]
