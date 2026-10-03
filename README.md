@@ -6,7 +6,7 @@
 [![docs.rs](https://img.shields.io/docsrs/oauth-client/latest)](https://docs.rs/oauth-client/latest/)
 [![rust 1.88.0+ badge](https://img.shields.io/badge/rust-1.88.0+-93450a.svg)](https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field)
 [![Rust CI](https://github.com/gifnksm/oauth-client-rs/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/gifnksm/oauth-client-rs/actions/workflows/rust-ci.yml)
-[![codecov](https://codecov.io/gh/gifnksm/oauth-client-rs/branch/master/graph/badge.svg?token=bFNgEBUdSx)](https://codecov.io/gh/gifnksm/oauth-client-rs)
+[![codecov](https://codecov.io/gh/gifnksm/oauth-client-rs/branch/main/graph/badge.svg?token=bFNgEBUdSx)](https://codecov.io/gh/gifnksm/oauth-client-rs)
 
 OAuth client for Rust
 
