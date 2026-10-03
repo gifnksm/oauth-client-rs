@@ -1,0 +1,11 @@
+{
+    "overrides": [
+        {
+            "files": ["*.jsonc"],
+            "options": {
+                "parser": "jsonc",
+                "trailingComma": "none"
+            }
+        }
+    ]
+}
