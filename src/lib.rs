@@ -42,9 +42,8 @@ use thiserror::Error;
 use time::OffsetDateTime;
 #[cfg(feature = "reqwest-blocking")]
 use ::{
-    lazy_static::lazy_static,
     reqwest::blocking::Client,
-    std::{io::Read, str::FromStr},
+    std::{io::Read, str::FromStr, sync::LazyLock},
     url::Url,
 };
 
@@ -80,9 +79,7 @@ impl From<reqwest::Error> for Error {
 }
 
 #[cfg(feature = "reqwest-blocking")]
-lazy_static! {
-    static ref CLIENT: Client = Client::new();
-}
+static CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
 
 /// Token structure for the OAuth
 #[derive(Clone, Debug)]
