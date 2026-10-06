@@ -30,7 +30,7 @@ url = { version = "2.5.8", optional = true }
 [dev-dependencies]
 oauth-client = { path = ".", features = ["client-reqwest", "reqwest-blocking"] }
 simple_logger = "5.2.0"
-tokio = { version = "1.53.1", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.53.2", features = ["macros", "rt", "rt-multi-thread"] }
 
 [badges]
 maintenance = { status = "passively-maintained" }
