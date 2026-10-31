@@ -13,7 +13,7 @@ workflows:
         - 'codecov/codecov-action@v7.1.1'
         - 'dtolnay/rust-toolchain@v1'
         - 'swatinem/rust-cache@v2.9.3'
-        - 'taiki-e/install-action@v2.87.32'
+        - 'taiki-e/install-action@v2.88.0'
 dependencies:
     'actions-rust-lang/audit@v1.2.7':
         ref: 'v1.2.7'
@@ -59,8 +59,8 @@ dependencies:
         commit: 'sha1-d1527c8f67ef9af357290475d4af4b0fab8f12e0'
         owner_id: 580492
         repo_id: 298565987
-    'taiki-e/install-action@v2.87.32':
-        ref: 'v2.87.32'
-        commit: 'sha1-5488ac5a951645ce95062214902ac4b6bc1a1037'
+    'taiki-e/install-action@v2.88.0':
+        ref: 'v2.88.0'
+        commit: 'sha1-86f7a0ffb25f40114606501a311ebcfaf882ea32'
         owner_id: 43724913
         repo_id: 442947557
