@@ -20,7 +20,7 @@ base64 = "0.23.1"
 http = "1.5.0"
 log = "0.4.35"
 percent-encoding = "2.3.2"
-rand = "0.10.3"
+rand = "0.10.4"
 reqwest = { version = "0.13.5", optional = true }
 ring = "0.17.14"
 thiserror = "2.0.21"
